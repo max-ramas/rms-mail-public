@@ -1,0 +1,64 @@
+# =============================================================================
+# RMS Mail — Mono Edition (Single-Account, SQLite, no PostgreSQL / Redis)
+# =============================================================================
+# Usage:
+#   1. cp .env-m.example .env-m  and fill in your values
+#   2. docker compose -f docker-compose-m.yml --env-file .env-m up -d
+# =============================================================================
+
+services:
+  backend:
+    image: maxramas/rms-mail:latest-m
+    # For local development builds, replace the line above with:
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    #   args:
+    #     EDITION: mono
+    container_name: rms-mail-mono
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    ports:
+      - "${PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env-m
+    volumes:
+      - ./data:/app/data
+      - ./storage:/app/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://localhost:${PORT:-8080}/api/health",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    image: maxramas/rms-mail-ui:latest-m
+    container_name: rms-mail-ui
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    ports:
+      - "${UI_PORT:-3000}:3000"
+    environment:
+      - HOSTNAME=0.0.0.0
+      - PORT=${UI_PORT:-3000}
+      - API_URL=http://backend:${PORT:-8080}
+      - INTERNAL_URL=http://backend:${PORT:-8080}
+    depends_on:
+      - backend
+
+networks:
+  rms-mail:
+    name: rms-mail
+    driver: bridge

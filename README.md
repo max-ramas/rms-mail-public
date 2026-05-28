@@ -241,7 +241,7 @@ Extends Unified for support teams, agencies, and operations teams living inside 
 
 ```text
 ┌──────────────────────────────────────────────────────────┐
-│                     Frontend (Next.js 16)                │
+│                  Frontend (Next.js 16)                   │
 │   React 19 · TipTap · Framer Motion · TanStack Virtual   │
 │   45 languages (next-intl) · Tailwind CSS · shadcn/ui    │
 └────────────────────────┬─────────────────────────────────┘
@@ -432,6 +432,8 @@ Open: `http://localhost:8080`
 |MCP Server|✅|✅|✅|
 |Vector Search (Bluge)|✅|✅|✅|
 |Unlimited Bulk Operations|✅|✅|✅|
+|Full Mobile Responsiveness|✅|✅|✅|
+|Drafts with Autosave|✅|✅|✅|
 |Labels, Rules, Groups|✅|✅|✅|
 |Rich HTML Composer|✅|✅|✅|
 |Keyboard Shortcuts|✅|✅|✅|

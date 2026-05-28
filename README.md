@@ -434,6 +434,7 @@ Open: `http://localhost:8080`
 |Unlimited Bulk Operations|✅|✅|✅|
 |Full Mobile Responsiveness|✅|✅|✅|
 |Drafts with Autosave|✅|✅|✅|
+|Private Email Notes|✅|✅|✅|
 |Labels, Rules, Groups|✅|✅|✅|
 |Rich HTML Composer|✅|✅|✅|
 |Keyboard Shortcuts|✅|✅|✅|

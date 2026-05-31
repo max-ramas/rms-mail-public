@@ -188,6 +188,16 @@ Especially people who:
 A multi-user deployment enforcing strict 1:1 mapping between a user profile and a single isolated mailbox. Mono intentionally avoids infrastructure complexity: no PostgreSQL, no Redis, no Kubernetes, no external dependencies.
 Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on SQLite and a single binary.
 
+---
+
+<p align="center">
+  <img src="screenshots/mono-1.png" alt="RMS Mail Mono Interface" width="800">
+  <br>
+  <i>RMS Mail Mono Interface</i>
+</p>
+
+---
+
 **Features:**
 * modern Apple Mail-inspired UI
 * instant vector search with Bluge
@@ -208,6 +218,17 @@ Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on S
 > **All your inboxes. One workspace.**
 
 Designed for users managing many inboxes, client accounts, infrastructure mail, support-heavy workflows, and personal + business communication.
+
+---
+
+<p align="center">
+  <img src="screenshots/unified-1.png" alt="RMS Mail Unified Interface" width="800">
+  <br>
+  <i>RMS Mail Unified Interface</i>
+</p>
+
+---
+
 **Everything from Mono plus:**
 * unified inbox
 * unified project groups

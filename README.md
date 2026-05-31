@@ -27,7 +27,7 @@
 ---
 
 <div align="center">
-  <a href="https://ko-fi.com/M7I020HKXX">
+  <a href="https://ko-fi.com/M7I020HKXX" target="_blank" rel="noopener noreferrer">
     <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="ko-fi">
   </a>
 </div>

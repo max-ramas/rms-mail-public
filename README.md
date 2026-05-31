@@ -506,7 +506,7 @@ Open: `http://localhost:3000`
 |Full Mobile Responsiveness|✅|✅|✅|
 |Drafts with Autosave|✅|✅|✅|
 |Private Email Notes|✅|✅|✅|
-|Labels, Rules, Groups|✅|✅|✅|
+|Labels, Rules|✅|✅|✅|
 |Rich HTML Composer|✅|✅|✅|
 |45 Languages (i18n)|✅|✅|✅|
 |Thread Chains (Toggleable)|✅|✅|✅|

@@ -252,6 +252,12 @@ Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on S
 * SPF/DKIM verification
 * 45 languages
 
+---
+
+<video src="https://github.com/user-attachments/assets/70ce2ed9-e458-4f17-b601-6d25377cda13" autoplay loop muted playsinline width="100%"></video>
+
+---
+
 ### Unified
 > **All your inboxes. One workspace.**
 

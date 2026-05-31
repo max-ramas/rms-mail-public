@@ -25,6 +25,10 @@
 </p>
 
 ---
+<p align="center">
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M7I020HKXX)
+</p>
+---
 
 ## 📑 Table of Contents
 

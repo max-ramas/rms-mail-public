@@ -34,6 +34,26 @@
 
 ---
 
+## 🚧 Current State
+
+RMS Mail is actively developed and already used in real-world workflows.
+
+Current status:
+- Mono edition: Release Candidate
+- Unified edition: In active development
+- Teams edition: Planned
+
+The project currently prioritizes:
+- core stability
+- large-mailbox performance
+- AI workflows
+- infrastructure reliability
+- workflow ergonomics
+
+Documentation, walkthrough videos, and deployment guides are currently being expanded.
+
+---
+
 ## 📑 Table of Contents
 
 1. [🖥️ Why Browser-First?](#%EF%B8%8F-why-browser-first)
@@ -161,10 +181,13 @@ Capabilities:
 
 We fixed the most annoying UX limitations of self-hosted email:
 
+* **Smart Mail Auto-Discovery:** Dynamic Mail Server Resolver automatically discovers IMAP/SMTP hosts, ports, and encryption methods based purely on your email domain. No Thunderbird-style setup hell.
 * **Unlimited Bulk Operations:** Works on ANY mailbox size. Select 10K+, 100K+ emails and apply rules instantly. No "visible rows only" limitations. No pagination hell.
 * **Thread Chains (Conversations):** Full Gmail-style conversation threading. Smart grouping with a per-user toggle to switch between classic list and threaded views on the fly.
 * **Configurable Send Delay (Undo Send):** Not just an "oops button". A robust, persistent backend queue manages outbound mails. Graceful system shutdowns preserve pending items. Can be toggled or configured per user.
 * **Smart Notifications:** Browser push notifications, Telegram push alerts, AI-priority notifications, Rule-based notifications, and real-time IMAP IDLE events.
+* **Command Palette & Custom Hotkeys:** Fully rebindable keyboard shortcuts with a fuzzy-search command palette (`Cmd+Shift+P`) for lightning-fast, mouse-free navigation.
+* **PWA (Installable App):** Install RMS Mail as a standalone, native desktop or mobile application with isolated windows and OS-level integration.
 
 ---
 
@@ -220,9 +243,11 @@ Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on S
 * browser & Telegram notifications
 * configurable email threading & Undo Send delay
 * bulk operations for huge folders
+* webhook automation
 * keyboard-first workflow
 * rich HTML composer
-* labels, rules, groups
+* labels, rules
+* real-time SSE updates
 * pin / snooze / mute
 * SPF/DKIM verification
 * 45 languages
@@ -246,11 +271,7 @@ Designed for users managing many inboxes, client accounts, infrastructure mail, 
 * unified inbox
 * unified project groups
 * PostgreSQL + Redis
-* real-time SSE updates
 * OAuth2
-* webhook automation
-* AI action logs
-* dashboard & sync monitoring
 * cross-account workflows
 * centralized notifications
 
@@ -427,32 +448,42 @@ RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live la
 Bash
 
 ```
-git clone [https://github.com/your-org/rms-mail.git](https://github.com/your-org/rms-mail.git)
+git clone https://github.com/your-org/rms-mail.git
 cd rms-mail
 
 cp .env-m.example .env
 
-docker compose -f docker-compose-m.yml up -d
+# Configure:
+# DATABASE_URL
+
+cp docker-compose-m.yml docker-compose.yml
+
+docker compose up -d
 ```
 
-Open: `http://localhost:8080`
+Open: `http://localhost:3000`
 
 ### Unified
 
 Bash
 
 ```
+git clone https://github.com/your-org/rms-mail.git
+cd rms-mail
+
 cp .env-u.example .env
 
 # Configure:
 # DATABASE_URL
 # REDIS_URL
-# ENCRYPTION_KEYS
+# ENCRYPTION_KEY
 
-docker compose -f docker-compose-u.yml up -d
+cp docker-compose-u.yml docker-compose.yml
+
+docker compose up -d
 ```
 
-Open: `http://localhost:8080`
+Open: `http://localhost:3000`
 
 ## 📊 Feature Matrix
 
@@ -465,19 +496,25 @@ Open: `http://localhost:8080`
 |Telegram Bot|✅|✅|✅|
 |MCP Server|✅|✅|✅|
 |Vector Search (Bluge)|✅|✅|✅|
+|PWA (Installable Web App)|✅|✅|✅|
+|Command Palette & Hotkeys|✅|✅|✅|
+|Dynamic IMAP/SMTP Resolver|✅|✅|✅|
+|Auto-Draft (UIDPLUS + SSE)|✅|✅|✅|
+|Zstd Compression & GC|✅|✅|✅|
+|Seamless Key Rotation|✅|✅|✅|
 |Unlimited Bulk Operations|✅|✅|✅|
 |Full Mobile Responsiveness|✅|✅|✅|
 |Drafts with Autosave|✅|✅|✅|
 |Private Email Notes|✅|✅|✅|
 |Labels, Rules, Groups|✅|✅|✅|
 |Rich HTML Composer|✅|✅|✅|
-|Keyboard Shortcuts|✅|✅|✅|
 |45 Languages (i18n)|✅|✅|✅|
 |Thread Chains (Toggleable)|✅|✅|✅|
 |Configurable Send Delay|✅|✅|✅|
 |Browser & TG Notifications|✅|✅|✅|
 |IDE / Agent Integration|✅|✅|✅|
 |Pin / Snooze / Mute|✅|✅|✅|
+|Hash Partitioning (64x)|—|✅|✅|
 |Multi-Account Unified Inbox|—|✅|✅|
 |Project Groups|—|✅|✅|
 |PostgreSQL + Redis|—|✅|✅|

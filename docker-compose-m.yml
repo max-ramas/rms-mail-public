@@ -24,7 +24,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
-      - .env-m
+      - .env
     volumes:
       - ./data:/app/data
       - ./storage:/app/storage

@@ -479,23 +479,28 @@ Once started, open your browser and navigate to:
 
 Bash
 
-```
+```bash
+# 1. Clone the repository and navigate to the project directory
 git clone https://github.com/your-org/rms-mail.git
 cd rms-mail
 
+# 2. Set up your environment variables
 cp .env-u.example .env
 
-# Configure:
-# DATABASE_URL
-# REDIS_URL
-# ENCRYPTION_KEY
+# 3. Configure required variables inside the .env file:
+# - DATABASE_URL
+# - REDIS_URL
+# - ENCRYPTION_KEY (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
 
+# 4. Copy the Unified-specific compose configuration
 cp docker-compose-u.yml docker-compose.yml
 
+# 5. Fire it up!
 docker compose up -d
 ```
 
-Open: `http://localhost:3000`
+Once started, open your browser and navigate to:
+👉 `http://localhost:3000`
 
 ## 📊 Feature Matrix
 

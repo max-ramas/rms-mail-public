@@ -451,8 +451,6 @@ RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live la
 
 ### Mono
 
-Bash
-
 ```bash
 # 1. Clone the repository and navigate to the project directory
 git clone https://github.com/your-org/rms-mail.git
@@ -476,8 +474,6 @@ Once started, open your browser and navigate to:
 👉 `http://localhost:3000`
 
 ### Unified
-
-Bash
 
 ```bash
 # 1. Clone the repository and navigate to the project directory

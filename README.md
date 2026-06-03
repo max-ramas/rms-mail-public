@@ -461,8 +461,9 @@ cd rms-mail
 # 2. Set up your environment variables
 cp .env-m.example .env
 
-# 3. Configure your ENCRYPTION_KEY and other settings inside the .env file (You only need to enter the ENCRYPTION_KEY; that is all the app needs to function)
-# (Open .env and edit required fields)
+# 3. Configure your ENCRYPTION_KEY inside the .env file
+# (You only need to enter the ENCRYPTION_KEY; that is all the app needs to function)
+# To generate a secure random 32-byte hex key, run: openssl rand -hex 32
 
 # 4. Copy the Mono-specific compose configuration
 cp docker-compose-m.yml docker-compose.yml

@@ -9,12 +9,6 @@
 services:
   backend:
     image: maxramas/rms-mail:latest-m
-    # For local development builds, replace the line above with:
-    # build:
-    #   context: ./backend
-    #   dockerfile: Dockerfile
-    #   args:
-    #     EDITION: mono
     container_name: rms-mail-mono
     restart: unless-stopped
     networks:
@@ -28,6 +22,8 @@ services:
     volumes:
       - ./data:/app/data
       - ./storage:/app/storage
+      # Opt-in: mount custom nginx config (when using external nginx/openresty)
+      # - ./nginx/conf.d:/etc/nginx/conf.d:ro
     healthcheck:
       test:
         [

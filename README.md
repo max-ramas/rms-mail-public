@@ -453,21 +453,26 @@ RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live la
 
 Bash
 
-```
+```bash
+# 1. Clone the repository and navigate to the project directory
 git clone https://github.com/your-org/rms-mail.git
 cd rms-mail
 
+# 2. Set up your environment variables
 cp .env-m.example .env
 
-# Configure:
-# DATABASE_URL
+# 3. Configure your ENCRYPTION_KEY and other settings inside the .env file (You only need to enter the ENCRYPTION_KEY; that is all the app needs to function)
+# (Open .env and edit required fields)
 
+# 4. Copy the Mono-specific compose configuration
 cp docker-compose-m.yml docker-compose.yml
 
+# 5. Fire it up!
 docker compose up -d
 ```
 
-Open: `http://localhost:3000`
+Once started, open your browser and navigate to:
+👉 `http://localhost:3000`
 
 ### Unified
 

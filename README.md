@@ -70,7 +70,8 @@ Documentation, walkthrough videos, and deployment guides are currently being exp
 12. [🚀 Quick Start](#-quick-start)
 13. [📊 Feature Matrix](#-feature-matrix)
 14. [💭 Philosophy](#-philosophy)
-15. [🗺️ Roadmap](#-roadmap)
+15. [🔑 Security: Database Encryption & Key Rotation](#security-database-encryption--key-rotation)
+16. [🗺️ Roadmap](#-roadmap)
 
 ---
 
@@ -573,7 +574,7 @@ Current priorities:
     
 - expanded AI orchestration
 
-## Security: Database Encryption & Key Rotation
+## 🔑 Security: Database Encryption & Key Rotation
 
 RMS Mail securely encrypts sensitive data at rest using **AES-256-GCM**. 
 

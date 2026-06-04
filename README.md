@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
-  <b>AI-native self-hosted email built for large-scale, multi-account workflows.</b><br>
+  <b>High-performance self-hosted email built for large-scale, multi-account workflows.</b><br>
   Built for developers, operators, and power users managing real-world workloads at scale.<br>
-  <i>Because modern email workloads outgrew traditional webmail clones years ago.</i>
+  <i>Supercharged with an optional AI module, because modern email outgrew traditional webmail clones years ago.</i>
 </p>
 
 ---

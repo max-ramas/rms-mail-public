@@ -60,7 +60,7 @@ Documentation, walkthrough videos, and deployment guides are currently being exp
 2. [💡 Why RMS Mail Exists](#-why-rms-mail-exists)
 3. [🚀 What Makes RMS Mail Different?](#-what-makes-rms-mail-different)
 4. [🧠 The Programmable Inbox](#-the-programmable-inbox)
-5. [🛠️ Inbox Mastery at Scale](#-inbox-mastery-at-scale)
+5. [🛠️ Inbox Mastery at Scale](#%EF%B8%8F-inbox-mastery-at-scale)
 6. [👥 Who is this for?](#-who-is-this-for)
 7. [🎯 Editions](#-editions)
 8. [🏗️ Architecture & Tech Stack](#️-architecture--tech-stack)

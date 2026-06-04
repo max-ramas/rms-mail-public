@@ -572,7 +572,45 @@ Current priorities:
 - more automation workflows
     
 - expanded AI orchestration
-    
+
+## Security: Database Encryption & Key Rotation
+
+RMS Mail securely encrypts sensitive data at rest using **AES-256-GCM**. 
+
+* **Key Derivation:** Raw keys provided via environment variables are hashed using SHA-256 to guarantee a 32-byte length.
+* **Storage:** A secure, random 12-byte nonce is generated for every database entry. The result is stored as a base64-encoded string (`nonce + ciphertext`) and is fully supported on both PostgreSQL and SQLite.
+
+### Zero-Downtime Key Rotation
+
+The system supports seamless key rotation. The `ENCRYPTION_KEYS` environment variable accepts a comma-separated list of keys (`encKeys` array). 
+* **Encryption:** The `encryptPassword` function always uses the primary key (`encKeys[0]`).
+* **Decryption:** The `decryptPassword` function iterates through the entire `encKeys` array, returning the result from the first key that successfully decrypts the payload.
+
+To rotate your encryption keys without downtime, follow these steps:
+
+**1. Add the new key**
+Update your environment variable. Place the new key at the beginning of the list, keeping the old key as a fallback.
+```bash
+export ENCRYPTION_KEYS="new-secret-key,old-secret-key"
+
+```
+
+**2. Re-encrypt existing data**
+Run the application with the `-rekey` flag. This triggers the `store.RekeyAll()` method, which iterates through the `accounts.password_encrypted` and `mcp_keys.key_encrypted` fields. It decrypts each record using the available fallback keys and re-encrypts them using the new primary key (`encKeys[0]`).
+
+```bash
+./rms-mail -rekey
+# Expected output: "Rekey complete" "re_encrypted"=5
+
+```
+
+**3. Remove the old key**
+Once the rekey process is complete, the old key is no longer needed. You can safely remove it from your environment.
+
+```bash
+export ENCRYPTION_KEYS="new-secret-key"
+
+```    
 
 ## ⚖️ License
 

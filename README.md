@@ -70,8 +70,8 @@ Documentation, walkthrough videos, and deployment guides are currently being exp
 12. [🚀 Quick Start](#-quick-start)
 13. [📊 Feature Matrix](#-feature-matrix)
 14. [💭 Philosophy](#-philosophy)
-15. [🔑 Security: Database Encryption & Key Rotation](#security-database-encryption--key-rotation)
-16. [🗺️ Roadmap](#-roadmap)
+15. [🗺️ Roadmap](#%EF%B8%8F-roadmap)
+16. [🔑 Security: Database Encryption & Key Rotation](#-security-database-encryption--key-rotation)
 
 ---
 

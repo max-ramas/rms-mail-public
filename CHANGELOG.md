@@ -2,7 +2,7 @@
 
 All notable changes to RMS Mail will be documented in this file.
 
-## [3.0.2] — 2026-06-10 (pre-release)
+## [3.0.2] — 2026-06-11
 
 ### Changed
 

@@ -184,6 +184,7 @@ Endpoints that operate on shared infrastructure now require admin privileges via
 - **Build script**: `bp-t.sh` for Teams edition Docker build+push
 - **Node 26**: `.nvmrc` + `engines.node >= 26` + `--no-deprecation` flag
 - **Dependencies**: Node 26.3.0, Redis 8-alpine, Alpine 3.22, Go 1.26.3
+- **Bulk-by-Filter**: `POST /api/emails/bulk` filter-based mode — when `ids` is empty and `account_id` is present, operations use direct SQL `UPDATE` (no 250K-element JSON array). Removes the 10K `LIMIT` bottleneck on "Select All" + Delete/Archive/Read/Flag for 200K+ inboxes. Includes `/api/emails/count` lightweight endpoint, `GetAccountIDsByFilter` for unified per-account grouping, chunked IMAP enqueue (500/batch)
 
 ### Production Debugging — June 10, 2026
 

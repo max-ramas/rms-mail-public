@@ -1,9 +1,10 @@
 # =============================================================================
 # RMS Mail — Mono Edition (Single-Account, SQLite, no PostgreSQL / Redis)
 # =============================================================================
-# Usage:
-#   1. cp .env-m.example .env-m  and fill in your values
-#   2. docker compose -f docker-compose-m.yml --env-file .env-m up -d
+#   Usage:
+#   cp .env-m.example .env
+#   nano .env  — fill in REQUIRED values
+#   docker compose up -d
 # =============================================================================
 
 services:

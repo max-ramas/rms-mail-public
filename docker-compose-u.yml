@@ -1,0 +1,114 @@
+# =============================================================================
+# RMS Mail — Unified Edition (Multi-Account, PostgreSQL + Redis)
+# =============================================================================
+# Usage:
+#   cp .env.dist .env
+#   nano .env  — fill in REQUIRED values
+#   docker compose up -d
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: rms-mail-pg
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rmsmail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-rms-mail}
+    volumes:
+      - ./pgdata:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-rmsmail} -d $${POSTGRES_DB:-rms-mail}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:8-alpine
+    container_name: rms-mail-redis
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    command: redis-server --appendonly yes
+    volumes:
+      - ./redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  backend:
+    image: maxramas/rms-mail:latest-u
+    container_name: rms-mail-api
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-rmsmail}:${POSTGRES_PASSWORD}@rms-mail-pg:5432/${POSTGRES_DB:-rms-mail}?sslmode=prefer
+      REDIS_URL: rms-mail-redis:6379
+      ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET}
+      CAMO_HMAC_KEY: ${CAMO_HMAC_KEY:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: info
+      STORAGE_ROOT: /app/storage
+      PORT: "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://localhost:${PORT:-8080}/api/health",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    image: maxramas/rms-mail-ui:latest-u
+    container_name: rms-mail-ui
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    ports:
+      - "${UI_PORT:-3000}:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - API_URL=http://backend:8080
+      - INTERNAL_URL=http://backend:8080
+    depends_on:
+      - backend
+
+networks:
+  rms-mail:
+    name: rms-mail
+    driver: bridge
+
+volumes:
+  redisdata:

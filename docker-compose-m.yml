@@ -9,6 +9,12 @@
 services:
   backend:
     image: maxramas/rms-mail:latest-m
+    # For local development builds, replace the line above with:
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    #   args:
+    #     EDITION: mono
     container_name: rms-mail-mono
     restart: unless-stopped
     networks:
@@ -17,11 +23,20 @@ services:
       - "${PORT:-8080}:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    env_file:
-      - .env
+    # Optional mail server overrides (see .env-m.example):
+    #   RMS_MAIL_HOST=mail.example.com    # M-version: override auto-detected mail server
+    #   RMS_IMAP_HOST=imap.example.com    # Override IMAP host
+    #   RMS_SMTP_HOST=smtp.example.com    # Override SMTP host
     volumes:
       - ./data:/app/data
       - ./storage:/app/storage
+    environment:
+      ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET}
+      CAMO_HMAC_KEY: ${CAMO_HMAC_KEY:-}
+      DATA_ROOT: /app/data
+      STORAGE_ROOT: /app/storage
       # Opt-in: mount custom nginx config (when using external nginx/openresty)
       # - ./nginx/conf.d:/etc/nginx/conf.d:ro
     healthcheck:
@@ -47,10 +62,10 @@ services:
     ports:
       - "${UI_PORT:-3000}:3000"
     environment:
-      - HOSTNAME=0.0.0.0
-      - PORT=${UI_PORT:-3000}
-      - API_URL=http://backend:${PORT:-8080}
-      - INTERNAL_URL=http://backend:${PORT:-8080}
+      - HOST=0.0.0.0
+      - PORT=3000
+      - API_URL=http://backend:8080
+      - INTERNAL_URL=http://backend:8080
     depends_on:
       - backend
 

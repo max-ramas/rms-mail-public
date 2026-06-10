@@ -454,14 +454,14 @@ RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live la
 
 ```bash
 # 1. Clone the repository and navigate to the project directory
-git clone https://github.com/your-org/rms-mail.git
-cd rms-mail
+git clone https://github.com/max-ramas/rms-mail-public.git
+cd rms-mail-public
 
 # 2. Set up your environment variables
 cp .env-m.example .env
 
-# 3. Configure your ENCRYPTION_KEY inside the .env file
-# (You only need to enter the ENCRYPTION_KEY; that is all the app needs to function)
+# 3. Configure your `ENCRYPTION_KEYS` or `ENCRYPTION_KEY` and `JWT_SECRET` inside the .env file
+# (You only need to enter the `ENCRYPTION_KEYS` or `ENCRYPTION_KEY` and `JWT_SECRET`; that is all the app needs to function)
 # To generate a secure random 32-byte hex key, run: openssl rand -hex 32
 
 # 4. Copy the Mono-specific compose configuration
@@ -478,16 +478,17 @@ Once started, open your browser and navigate to:
 
 ```bash
 # 1. Clone the repository and navigate to the project directory
-git clone https://github.com/your-org/rms-mail.git
-cd rms-mail
+git clone https://github.com/max-ramas/rms-mail-public.git
+cd rms-mail-public
 
 # 2. Set up your environment variables
 cp .env-u.example .env
 
 # 3. Configure required variables inside the .env file:
-# - DATABASE_URL
-# - REDIS_URL
-# - ENCRYPTION_KEY (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `POSTGRES_PASSWORD` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `ENCRYPTION_KEYS` or `ENCRYPTION_KEY`(To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `JWT_SECRET` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `CAMO_HMAC_KEY` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
 
 # 4. Copy the Unified-specific compose configuration
 cp docker-compose-u.yml docker-compose.yml

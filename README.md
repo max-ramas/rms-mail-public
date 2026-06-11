@@ -606,6 +606,15 @@ export ENCRYPTION_KEYS="new-secret-key"
 
 ```
 
+---
+
+## 💬 Support & Feedback
+
+If you have any questions, architectural suggestions, or commercial inquiries, feel free to reach out directly:
+📧 **rms-mail@rms-ds.com**
+
+---
+
 ## ⚖️ License
 
 AGPLv3

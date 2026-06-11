@@ -264,6 +264,8 @@ Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on S
 
 Designed for users managing many inboxes, client accounts, infrastructure mail, support-heavy workflows, and personal + business communication.
 
+🎁 **Summer Promotion:** Use code **`SUMMER15`** before August 31 to get **15% off** on your Unified license.
+
 ---
 
 <p align="center">

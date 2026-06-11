@@ -65,9 +65,10 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       FRONTEND_URL: ${FRONTEND_URL:-}
       APP_ENV: ${APP_ENV:-production}
-      LOG_LEVEL: info
+      # LOG_LEVEL: info
       STORAGE_ROOT: /app/storage
       PORT: "8080"
+      PG_MAX_CONNS: "20"
     depends_on:
       postgres:
         condition: service_healthy

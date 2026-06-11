@@ -1,6 +1,5 @@
-
 <p align="center">
-  <img src="screenshots/rms-mail-logo.png" alt="RMS Mail Logo";">
+  <img src="screenshots/rms-mail-logo.png" alt="RMS Mail Logo">
 </p>
 
 ---
@@ -36,18 +35,18 @@
 
 ## 🚧 Current State
 
-RMS Mail is actively developed and already used in real-world workflows.
+RMS Mail is actively developed and used in intense real-world highload production workflows.
 
 Current status:
-- Mono edition: Release Candidate
-- Unified edition: In active development
+- Mono edition: Stable / Production-Ready
+- Unified edition: Stable / Production-Ready
 - Teams edition: Planned
 
 The project currently prioritizes:
-- core stability
-- large-mailbox performance
-- AI workflows
-- infrastructure reliability
+- core stability & zero-overhead resource usage
+- multi-gigabyte mailbox performance & chunk-based fetching
+- native database indexing latency minimization
+- infrastructure reliability & session state persistence
 - workflow ergonomics
 
 Documentation, walkthrough videos, and deployment guides are currently being expanded.
@@ -64,7 +63,7 @@ Documentation, walkthrough videos, and deployment guides are currently being exp
 6. [👥 Who is this for?](#-who-is-this-for)
 7. [🎯 Editions](#-editions)
 8. [🏗️ Architecture & Tech Stack](#️-architecture--tech-stack)
-9. [⚡ Vector Search & Performance Pipeline](#-vector-search--performance-pipeline)
+9. [⚡ Native Database FTS & Performance Pipeline](#-native-database-fts--performance-pipeline)
 10. [📧 Gmail-Style Email Processing](#-gmail-style-email-processing)
 11. [🌍 Internationalization (45 Languages)](#-internationalization-45-languages)
 12. [🚀 Quick Start](#-quick-start)
@@ -126,11 +125,11 @@ RMS Mail was built from real operational pain:
 RMS Mail is designed for:
 * tens of accounts
 * hundreds of folders
-* millions of emails
+* hundreds of thousands of emails per single mailbox (250K+ validated)
 * bulk operations at scale
 
-Unlike traditional IMAP clients: search is locally indexed, metadata is normalized, UI rendering is virtualized, and operations run directly against DB/index pipelines.
-**Result:** instant search, smooth scrolling, no IMAP `SEARCH` freezes, and bulk operations on thousands of emails simultaneously.
+Unlike traditional IMAP clients: search is locally indexed using native DB engines, metadata is normalized, UI rendering is virtualized, and operations run directly against internal transactional DB pipelines.
+**Result:** instant search, smooth scrolling, no IMAP `SEARCH` freezes, and bulk operations executed instantly on huge data sets.
 
 ### 🤖 AI Is Native — Not Bolted On
 AI is integrated directly into the Web UI, Telegram, MCP, and IDE workflows. The AI can:
@@ -158,9 +157,9 @@ RMS Mail is an orchestration layer, not just a client. Control your mailbox from
 ### 🔌 MCP Server & IDE Integration
 RMS Mail ships with a native MCP server. Use your mailbox directly from **Cursor, Zed, Claude Desktop**, custom agents, orchestrators, and IDE-integrated workflows.
 Available capabilities:
-* `search_emails`
+* `search_emails` (fully isolated by MCP API Key context)
 * `get_email`
-* `email_agent` (Natural language email operations)
+* `email_agent` (Natural language email operations with native tool-calling maps)
 
 *This is not an "AI wrapper" integration. Your mailbox becomes part of your agent ecosystem.*
 
@@ -183,11 +182,12 @@ Capabilities:
 We fixed the most annoying UX limitations of self-hosted email:
 
 * **Smart Mail Auto-Discovery:** Dynamic Mail Server Resolver automatically discovers IMAP/SMTP hosts, ports, and encryption methods based purely on your email domain. No Thunderbird-style setup hell.
-* **Unlimited Bulk Operations:** Works on ANY mailbox size. Select 10K+, 100K+ emails and apply rules instantly. No "visible rows only" limitations. No pagination hell.
+* **Resilient IMAP Sync Batching:** Synchronization queries data in strict 500-UID increments, flushing checkpoints immediately to protect against server-side TCP timeouts on immense mailboxes (200,000+ messages).
+* **Unlimited Bulk-by-Filter Actions:** Works on ANY folder density. Select all emails and apply read/unread/delete mutations instantly. No "visible rows only" limitations. No pagination or heavy JSON processing memory overhead.
 * **Thread Chains (Conversations):** Full Gmail-style conversation threading. Smart grouping with a per-user toggle to switch between classic list and threaded views on the fly.
-* **Configurable Send Delay (Undo Send):** Not just an "oops button". A robust, persistent backend queue manages outbound mails. Graceful system shutdowns preserve pending items. Can be toggled or configured per user.
-* **Smart Notifications:** Browser push notifications, Telegram push alerts, AI-priority notifications, Rule-based notifications, and real-time IMAP IDLE events.
-* **Command Palette & Custom Hotkeys:** Fully rebindable keyboard shortcuts with a fuzzy-search command palette (`Cmd+Shift+P`) for lightning-fast, mouse-free navigation.
+* **Configurable Send Delay (Undo Send):** Not just an "oops button". A robust, persistent backend Redis ZSET queue manages outbound mails. Graceful system shutdowns preserve pending items.
+* **Smart Notifications:** Browser push notifications via SSE, Telegram push alerts, AI-priority notifications, Rule-based notifications, and real-time IMAP IDLE events.
+* **Command Palette & Custom Hotkeys:** Fully rebindable physical position-based keyboard shortcuts (`event.code` layout independent) with a fuzzy-search command palette (`Cmd+Shift+P`) for lightning-fast, mouse-free navigation.
 * **PWA (Installable App):** Install RMS Mail as a standalone, native desktop or mobile application with isolated windows and OS-level integration.
 
 ---
@@ -215,8 +215,8 @@ Especially people who:
 
 | Edition | Status | Purpose |
 | :--- | :--- | :--- |
-| **Mono** | **Release Candidate** | Multi-user deployment with strict 1:1 user-to-mailbox isolation (SQLite). |
-| **Unified** | **Coming Soon** | Multi-account workspace with unified inboxes (PostgreSQL + Redis). |
+| **Mono** | **Stable / RC** | Multi-user deployment with strict 1:1 user-to-mailbox isolation (SQLite). |
+| **Unified** | **Released** | Multi-account workspace with unified inboxes (PostgreSQL + Redis). |
 | **Teams** | **Planned** | Shared mailbox collaboration & helpdesk workflows. |
 
 ### Mono
@@ -237,20 +237,20 @@ Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on S
 
 **Features:**
 * modern Apple Mail-inspired UI
-* instant vector search with Bluge
-* IMAP IDLE push sync
+* zero-overhead native SQLite FTS5 search
+* IMAP IDLE push sync with TCP keepalive watchdogs
 * AI-native workflows
 * Telegram & MCP integrations
 * browser & Telegram notifications
 * configurable email threading & Undo Send delay
-* bulk operations for huge folders
+* Bulk-by-Filter operations for huge folders
 * webhook automation
-* keyboard-first workflow
+* keyboard-first workflow (layout independent)
 * rich HTML composer
 * labels, rules
 * real-time SSE updates
 * pin / snooze / mute
-* SPF/DKIM verification
+* SPF/DKIM verification & anti-spoofing checks
 * 45 languages
 
 ---
@@ -275,11 +275,12 @@ Designed for users managing many inboxes, client accounts, infrastructure mail, 
 ---
 
 **Everything from Mono plus:**
-* unified inbox
-* unified project groups
-* PostgreSQL + Redis
-* OAuth2
-* cross-account workflows
+* unified inbox & native cross-account PostgreSQL `tsvector` FTS
+* unified project groups with live aggregated count subqueries
+* 64x Hash Partitioning on emails table for B-Tree safety
+* persistent Redis backing (AOF mode) for sessions, jobs and rate limiters
+* OAuth2 Applications configuration layer (BYOA)
+* dual unread counters (individual account vs unified inbox)
 * centralized notifications
 
 ### Teams
@@ -322,8 +323,8 @@ Extends Unified for support teams, agencies, and operations teams living inside 
 │  └───────────┘  └──────────┘  └────────────────────┘     │
 │                                                          │
 │  ┌───────────┐  ┌──────────┐                             │
-│  │ Bluge     │  │ AES-GCM  │                             │
-│  │ FTS Index │  │ Crypto   │                             │
+│  │ Native    │  │ AES-GCM  │                             │
+│  │ DB FTS    │  │ Crypto   │                             │
 │  └───────────┘  └──────────┘                             │
 └────────────────────────┬─────────────────────────────────┘
                          │
@@ -333,120 +334,101 @@ Extends Unified for support teams, agencies, and operations teams living inside 
      │ SQLite  │   │PostgreSQL│   │  Redis  │
      │ (Mono)  │   │(Unified) │   │(Unified)│
      └─────────┘   └──────────┘   └─────────┘
-````
+
+```
 
 ### Tech Stack
 
 **Frontend:**
 
-- Next.js 16
-    
-- React 19
-    
-- Tailwind CSS
-    
-- TipTap
-    
-- TanStack Virtual
-    
-- next-intl
-    
-- Framer Motion
-    
+* Next.js 16
+* React 19
+* Tailwind CSS 4
+* TipTap
+* TanStack Virtual
+* next-intl
+* Framer Motion
 
 **Backend:**
 
-- Go 1.26
-    
-- SQLite
-    
-- PostgreSQL
-    
-- Redis
-    
-- Bluge
-    
-- SSE
-    
-- MCP
-    
+* Go 1.26
+* SQLite (Mono FTS5 virtual tables)
+* PostgreSQL (Unified GIN-indexed tsvector partitions)
+* Redis (Unified AOF Persistence)
+* SSE
+* MCP
 
-## ⚡ Vector Search & Performance Pipeline
+---
 
-RMS Mail does not rely on slow IMAP search. Every email passes through a pipeline ensuring smooth virtualization even with huge folders.
+## ⚡ Native Database FTS & Performance Pipeline
 
-Plaintext
+RMS Mail does not rely on slow IMAP search or memory-heavy external indexing sidecars. Every email passes through a zero-overhead pipeline ensuring instant access even inside massive directories.
 
 ```
-┌─────────┐     ┌──────────────┐     ┌───────────────┐     ┌─────────┐
-│  IMAP   │ ──▶ │  SQLite/PG   │ ──▶ │  Bluge Index  │ ──▶ │   UI    │
-│ Server  │     │  (metadata)  │     │  (full-text)  │     │ (React) │
-└─────────┘     └──────────────┘     └───────────────┘     └─────────┘
+┌─────────┐     ┌────────────────────────┐     ┌───────────────────────────────┐     ┌─────────┐
+│  IMAP   │ ──▶ │  SQLite FTS5 (Mono)    │ ──▶ │  Go Memory Pre-parsing        │ ──▶ │   UI    │
+│ Server  │     │  Postgres GIN (Unified)│     │  zstd Raw Payload Compression │     │ (React) │
+└─────────┘     └────────────────────────┘     └───────────────────────────────┘     └─────────┘
+
 ```
 
 **Pipeline:**
 
-1. IMAP synchronization
-    
-2. Metadata normalization
-    
-3. Local indexing with Bluge
-    
-4. Real-time UI rendering
-    
+1. Batch-based IMAP synchronization (500 UID chunks).
+2. Metadata normalization and cross-language UTF-8 strict sanitization.
+3. Native full-text index generation (SQLite FTS5 virtual engine / PostgreSQL `tsvector`).
+4. Real-time UI virtualization.
 
-**Result:** sub-100ms search, instant filtering, scalable inboxes, fast bulk operations.
+**Result:** sub-100ms text search, instant filter counting, fast bulk operations.
+
+---
 
 ## 📧 Gmail-Style Email Processing
 
 Incoming emails are normalized before rendering to ensure privacy and safety.
 
-Plaintext
-
 ```
 Raw MIME ──▶ enmime parser ──▶ HTML sanitization ──▶ CSS normalization ──▶ Safe rendering
+
 ```
 
 **Features:**
 
-- MIME normalization
-    
-- HTML sanitization
-    
-- quote folding
-    
-- inline attachment support
-    
-- tracking protection
-    
-- XSS protection
-    
-- privacy-first rendering
-    
+* MIME normalization
+* HTML sanitization (bluemonday backend whitelist wrapping)
+* quote folding
+* inline attachment support
+* tracking protection
+* XSS / XXE protection
+* privacy-first rendering (Camo HMAC-signed image proxy)
+
+---
 
 ## 🌍 Internationalization (45 Languages)
 
 RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live language switching, localized dates, and full UI localization.
 
-**Supported regions:** Europe, Middle East, East Asia, South Asia, Central Asia, Caucasus, Southeast Asia.
+**Supported regions:** Europe, Middle East, East Asia, South Asia, Central Asia, Caucasus, Southeast Asia.
 
-|**Code**|**Language**|**Code**|**Language**|**Code**|**Language**|
-|---|---|---|---|---|---|
-|`en`|🇬🇧 English|`ru`|🇷🇺 Русский|`zh`|🇨🇳 中文|
-|`ja`|🇯🇵 日本語|`ko`|🇰🇷 한국어|`ar`|🇸🇦 العربية|
-|`he`|🇮🇱 עברית|`hi`|🇮🇳 हिन्दी|`bn`|🇧🇩 Bengali|
-|`ur`|🇵🇰 اردو|`fa`|🇮🇷 فارسی|`tr`|🇹🇷 Türkçe|
-|`de`|🇩🇪 Deutsch|`fr`|🇫🇷 Français|`es`|🇪🇸 Español|
-|`it`|🇮🇹 Italiano|`nl`|🇳🇱 Nederlands|`pl`|🇵🇱 Polski|
-|`cs`|🇨🇿 Čeština|`sk`|🇸🇰 Slovenčina|`hu`|🇭🇺 Magyar|
-|`ro`|🇷🇴 Română|`bg`|🇧🇬 Български|`el`|🇬🇷 Ελληνικά|
-|`sr`|🇷🇸 Српски|`hr`|🇭🇷 Hrvatski|`sl`|🇸🇮 Slovenščina|
-|`sv`|🇸🇪 Svenska|`da`|🇩🇰 Dansk|`nb`|🇳🇴 Norsk|
-|`fi`|🇫🇮 Suomi|`et`|🇪🇪 Eesti|`lv`|🇱🇻 Latviešu|
-|`lt`|🇱🇹 Lietuvių|`uk`|🇺🇦 Українська|`kk`|🇰🇿 Қазақша|
-|`ka`|🇬🇪 ქართული|`hy`|🇦🇲 Հայերեն|`az`|🇦🇿 Azərbaycanca|
-|`uz`|🇺🇿 Oʻzbekcha|`vi`|🇻🇳 Tiếng Việt|`th`|🇹🇭 ไทย|
-|`id`|🇮🇩 Indonesia|`ms`|🇲🇾 Melayu|`ca`|🇪🇸 Català|
+| **Code** | **Language** | **Code** | **Language** | **Code** | **Language** |
+| --- | --- | --- | --- | --- | --- |
+| `en` | 🇬🇧 English | `ru` | 🇷🇺 Русский | `zh` | 🇨🇳 中文 |
+| `ja` | 🇯🇵 日本語 | `ko` | 🇰🇷 한국어 | `ar` | 🇸🇦 العربية |
+| `he` | 🇮🇱 עברית | `hi` | 🇮🇳 हिन्दी | `bn` | 🇧🇩 Bengali |
+| `ur` | 🇵🇰 اردو | `fa` | 🇮🇷 فارسی | `tr` | 🇹🇷 Türkçe |
+| `de` | 🇩🇪 Deutsch | `fr` | 🇫🇷 Français | `es` | 🇪🇸 Español |
+| `it` | 🇮🇹 Italiano | `nl` | 🇳🇱 Nederlands | `pl` | 🇵🇱 Polski |
+| `cs` | 🇨🇿 Čeština | `sk` | 🇸🇰 Slovenčina | `hu` | 🇭🇺 Magyar |
+| `ro` | 🇷🇴 Română | `bg` | 🇧🇬 Български | `el` | 🇬🇷 Ελληνικά |
+| `sr` | 🇷🇸 Српски | `hr` | 🇭🇷 Hrvatski | `sl` | 🇸🇮 Slovenščina |
+| `sv` | 🇸🇪 Svenska | `da` | 🇩🇰 Dansk | `nb` | 🇳🇴 Norsk |
+| `fi` | 🇫🇮 Suomi | `et` | 🇪🇪 Eesti | `lv` | 🇱🇻 Latviešu |
+| `lt` | 🇱🇹 Lietuvių | `uk` | 🇺🇦 Українська | `kk` | 🇰🇿 Қазақша |
+| `ka` | 🇬🇪 ქართული | `hy` | 🇦🇲 Հայերեն | `az` | 🇦🇿 Azərbaycanca |
+| `uz` | 🇺🇿 Oʻzbekcha | `vi` | 🇻🇳 Tiếng Việt | `th` | 🇹🇭 ไทย |
+| `id` | 🇮🇩 Indonesia | `ms` | 🇲🇾 Melayu | `ca` | 🇪🇸 Català |
+
+---
 
 ## 🚀 Quick Start
 
@@ -460,8 +442,7 @@ cd rms-mail-public
 # 2. Set up your environment variables
 cp .env-m.example .env
 
-# 3. Configure your `ENCRYPTION_KEYS` or `ENCRYPTION_KEY` and `JWT_SECRET` inside the .env file
-# (You only need to enter the `ENCRYPTION_KEYS` or `ENCRYPTION_KEY` and `JWT_SECRET`; that is all the app needs to function)
+# 3. Configure your `ENCRYPTION_KEYS` and `JWT_SECRET` inside the .env file
 # To generate a secure random 32-byte hex key, run: openssl rand -hex 32
 
 # 4. Copy the Mono-specific compose configuration
@@ -469,6 +450,7 @@ cp docker-compose-m.yml docker-compose.yml
 
 # 5. Fire it up!
 docker compose up -d
+
 ```
 
 Once started, open your browser and navigate to:
@@ -486,105 +468,103 @@ cp .env-u.example .env
 
 # 3. Configure required variables inside the .env file:
 # - `POSTGRES_PASSWORD` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
-# - `ENCRYPTION_KEYS` or `ENCRYPTION_KEY`(To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
-# - `JWT_SECRET` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
-# - `CAMO_HMAC_KEY` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `ENCRYPTION_KEYS` (Multi-key rotation comma-separated list)
+# - `JWT_SECRET` (Independent token key material)
+# - `CAMO_HMAC_KEY` (For external image proxy hashing)
 
 # 4. Copy the Unified-specific compose configuration
 cp docker-compose-u.yml docker-compose.yml
 
 # 5. Fire it up!
 docker compose up -d
+
 ```
 
 Once started, open your browser and navigate to:
 👉 `http://localhost:3000`
 
+---
+
 ## 📊 Feature Matrix
 
-|**Feature**|**Mono**|**Unified**|**Teams**|
-|---|---|---|---|
-|IMAP Sync + IDLE|✅|✅|✅|
-|SMTP Send|✅|✅|✅|
-|AI Gateway (10 providers)|✅|✅|✅|
-|AI Chat + Tool-calling|✅|✅|✅|
-|Telegram Bot|✅|✅|✅|
-|MCP Server|✅|✅|✅|
-|Vector Search (Bluge)|✅|✅|✅|
-|PWA (Installable Web App)|✅|✅|✅|
-|Command Palette & Hotkeys|✅|✅|✅|
-|Dynamic IMAP/SMTP Resolver|✅|✅|✅|
-|Auto-Draft (UIDPLUS + SSE)|✅|✅|✅|
-|Zstd Compression & GC|✅|✅|✅|
-|Seamless Key Rotation|✅|✅|✅|
-|Unlimited Bulk Operations|✅|✅|✅|
-|Full Mobile Responsiveness|✅|✅|✅|
-|Drafts with Autosave|✅|✅|✅|
-|Private Email Notes|✅|✅|✅|
-|Labels, Rules|✅|✅|✅|
-|Rich HTML Composer|✅|✅|✅|
-|45 Languages (i18n)|✅|✅|✅|
-|Thread Chains (Toggleable)|✅|✅|✅|
-|Configurable Send Delay|✅|✅|✅|
-|Browser & TG Notifications|✅|✅|✅|
-|IDE / Agent Integration|✅|✅|✅|
-|Pin / Snooze / Mute|✅|✅|✅|
-|Hash Partitioning (64x)|—|✅|✅|
-|Multi-Account Unified Inbox|—|✅|✅|
-|Project Groups|—|✅|✅|
-|PostgreSQL + Redis|—|✅|✅|
-|OAuth 2.0 (Google, MS)|—|✅|✅|
-|Shared Mailboxes|—|—|🚧|
-|Assignments|—|—|🚧|
-|Internal Comments|—|—|🚧|
-|SLA Tracking|—|—|🚧|
-|Role-based Access|—|—|🚧|
+| **Feature** | **Mono** | **Unified** | **Teams** |
+| --- | --- | --- | --- |
+| IMAP Sync + IDLE Push | ✅ | ✅ | ✅ |
+| SMTP Send Engine | ✅ | ✅ | ✅ |
+| AI Gateway (10 providers) | ✅ | ✅ | ✅ |
+| AI Chat + Native Tool-calling | ✅ | ✅ | ✅ |
+| Telegram Bot Orchestration | ✅ | ✅ | ✅ |
+| MCP Server Protocol Engine | ✅ | ✅ | ✅ |
+| Native Database FTS Search | ✅ (FTS5) | ✅ (tsvector) | ✅ (tsvector) |
+| PWA (Installable Web App) | ✅ | ✅ | ✅ |
+| Command Palette & Hotkeys | ✅ | ✅ | ✅ |
+| Dynamic IMAP/SMTP Resolver | ✅ | ✅ | ✅ |
+| Auto-Draft (UIDPLUS + SSE) | ✅ | ✅ | ✅ |
+| Zstd Compression & GC | ✅ | ✅ | ✅ |
+| Seamless Key Rotation CLI | ✅ | ✅ | ✅ |
+| Unlimited Bulk-by-Filter SQL | ✅ | ✅ | ✅ |
+| Full Mobile Responsiveness | ✅ | ✅ | ✅ |
+| Drafts with Autosave | ✅ | ✅ | ✅ |
+| Private Email Notes | ✅ | ✅ | ✅ |
+| Labels, Rules Architecture | ✅ | ✅ | ✅ |
+| Rich HTML TipTap Composer | ✅ | ✅ | ✅ |
+| 45 Languages (i18n) | ✅ | ✅ | ✅ |
+| Thread Chains (Toggleable) | ✅ | ✅ | ✅ |
+| Configurable Send Delay | ✅ | ✅ | ✅ |
+| Browser & TG Notifications | ✅ | ✅ | ✅ |
+| IDE / Agent Integration | ✅ | ✅ | ✅ |
+| Pin / Snooze / Mute | ✅ | ✅ | ✅ |
+| Hash Partitioning (64x) | — | ✅ | ✅ |
+| Multi-Account Unified Inbox | — | ✅ | ✅ |
+| Project Groups Isolation | — | ✅ | ✅ |
+| PostgreSQL + Redis Infrastructure | — | ✅ | ✅ |
+| OAuth 2.0 Applications (BYOA) | — | ✅ | ✅ |
+| Shared Mailboxes | — | — | 🚧 |
+| Assignments Workflow | — | — | 🚧 |
+| Internal Comments Thread | — | — | 🚧 |
+| SLA Tracking & Dashboards | — | — | 🚧 |
+| Role-based Access Layers | — | — | 🚧 |
+
+---
 
 ## 💭 Philosophy
 
 RMS Mail is built around several core ideas:
 
-- email should be fast
-    
-- email should scale
-    
-- email should be programmable
-    
-- email should integrate with AI naturally
-    
-- users should control their infrastructure
-    
-- self-hosted software should not feel outdated
-    
+* email should be fast
+* email should scale to hundreds of thousands of entries natively
+* email should be highly programmable
+* email should integrate with AI naturally
+* users should strictly control their data storage infrastructure
+* self-hosted software should not feel outdated
 
 This project is heavily shaped by support workflows, operational reality, multi-account overload, browser-first workflows, AI-assisted productivity, and real infrastructure constraints.
+
+---
 
 ## 🗺️ Roadmap
 
 Current priorities:
 
-- Unified public release
-    
-- Teams edition
-    
-- onboarding simplification
-    
-- deeper IDE integrations
-    
-- more automation workflows
-    
-- expanded AI orchestration
+* Teams edition launch
+* onboarding simplification
+* deeper IDE integrations
+* more automation workflows
+* expanded AI orchestration
+
+---
 
 ## 🔑 Security: Database Encryption & Key Rotation
 
-RMS Mail securely encrypts sensitive data at rest using **AES-256-GCM**. 
+RMS Mail securely encrypts sensitive data at rest using **AES-256-GCM**.
 
 * **Key Derivation:** Raw keys provided via environment variables are hashed using SHA-256 to guarantee a 32-byte length.
 * **Storage:** A secure, random 12-byte nonce is generated for every database entry. The result is stored as a base64-encoded string (`nonce + ciphertext`) and is fully supported on both PostgreSQL and SQLite.
 
 ### Zero-Downtime Key Rotation
 
-The system supports seamless key rotation. The `ENCRYPTION_KEYS` environment variable accepts a comma-separated list of keys (`encKeys` array). 
+The system supports seamless key rotation. The `ENCRYPTION_KEYS` environment variable accepts a comma-separated list of keys (`encKeys` array).
+
 * **Encryption:** The `encryptPassword` function always uses the primary key (`encKeys[0]`).
 * **Decryption:** The `decryptPassword` function iterates through the entire `encKeys` array, returning the result from the first key that successfully decrypts the payload.
 
@@ -592,6 +572,7 @@ To rotate your encryption keys without downtime, follow these steps:
 
 **1. Add the new key**
 Update your environment variable. Place the new key at the beginning of the list, keeping the old key as a fallback.
+
 ```bash
 export ENCRYPTION_KEYS="new-secret-key,old-secret-key"
 
@@ -612,7 +593,7 @@ Once the rekey process is complete, the old key is no longer needed. You can saf
 ```bash
 export ENCRYPTION_KEYS="new-secret-key"
 
-```    
+```
 
 ## ⚖️ License
 

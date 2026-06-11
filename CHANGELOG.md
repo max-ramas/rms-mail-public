@@ -2,7 +2,104 @@
 
 All notable changes to RMS Mail will be documented in this file.
 
-## [3.0.2] — 2026-06-11
+## [3.0.3] — 2026-06-11
+
+### Changed
+
+#### IMAP Sync — Hybrid Sync Strategy (Descending + Ascending)
+Background sync now uses a hybrid strategy to balance UI responsiveness with data safety. 
+- **Initial Fast Fetch**: On a completely new inbox (`lastUID=0`), the worker performs a rapid descending fetch of the top 200 emails to populate the UI immediately without altering the database high-watermark.
+- **Historical Ascending Sync**: The main sync loop fetches UIDs in ascending order (`1 → UIDNext`). Progress (`lastUID` checkpoint) is saved safely after every batch. If a crash occurs, sync resumes perfectly without data loss.
+- **Sync throttling**: `SYNC_BATCH_DELAY_MS` env var (default 500ms) pauses between batches to prevent DB pool exhaustion
+
+#### Dual-Pool PostgreSQL — Sync Worker Isolation
+IMAP sync workers now use a dedicated 5-connection pool, separate from the 20-connection HTTP pool. Eliminates UI freezes during heavy sync on 200K+ inboxes.
+
+- **`poolctx.WithSync(ctx)`**: context key shared via `rmsmail/internal/poolctx` package
+- **`Storage.poolFrom(ctx)`**: selects syncPool for tagged contexts, mainPool otherwise
+- **177 `s.pool.*` calls** replaced with `s.poolFrom(ctx).*` throughout postgres storage
+- **`NewStorageWithSyncPool`**: creates dual pool on startup; factory (`store/store.go`) uses it for all non-Mono editions
+
+#### Frontend — Build Optimization
+- **Docker BuildKit cache mount**: `RUN --mount=type=cache,target=/root/.npm npm install` — npm cache persists across builds, `npm install` drops from 330s to 30-60s
+- **`CI=true` moved before `npm install`**: suppresses progress-bar rendering overhead in Docker logs
+- **Build tools for `sharp`**: `apk add vips-dev python3 make g++` → `npm install` → `apk del ...` — native C++ addon compiles cleanly on Alpine
+- **Standalone runtime**: added `vips` library to runner stage for Next.js Image Optimization
+- **Removed `@paypal/react-paypal-js`**: unused dependency (−12 packages, PayPal uses raw SDK via `window.paypal`)
+- **Package audit**: 24 packages updated to wanted versions, 973 total (was 1031)
+
+### Fixed
+
+#### IMAP Sync — UIDValidity Data Wipe Prevention
+`SyncWorker` early-returns on IMAP sync loops prevented the `UIDValidity` from being persisted into the database. Upon restart, the sync worker detected `UIDValidity = 0` vs the server's `UIDValidity`, forcing a full redownload of all emails.
+- **Fixed**: Moved `UpdateAccountUIDValidity` to the top of the IMAP sync sequence immediately after evaluation, ensuring it is always saved to the database.
+
+#### Full-Text Search — Async Indexing
+Building FTS indexes on large databases paralyzes the connection pool during backend initialization.
+- **Fixed (PostgreSQL - Unified)**: `CREATE INDEX IF NOT EXISTS` for `idx_emails_fts` remains synchronous in `schema.sql`, but the entire `InitSchema` migration runs inside a background goroutine in `main.go`. This prevents the exclusive lock on the `emails` table from blocking the HTTP server startup.
+- **Fixed (SQLite - Mono)**: `ReindexFTS` operation inside `main.go` is now wrapped in a background goroutine, preventing backend API startup delays.
+
+#### Mono — SQLite DSN Path Resolution
+`modernc.org/sqlite` driver with `file:` prefix (single-slash URI) created the database at an incorrect path (WORKDIR) instead of the bind-mounted `/app/data/`. Container restarts silently lost all data.
+
+- **Fixed**: removed `file:` prefix ambiguity, reverted to original DSN format with proper URI handling
+- **Root execution**: `user: "0:0"` in `docker-compose-m.yml` for aaPanel/cPanel compatibility (userns-remap + bind-mount ownership mismatch)
+- **Removed data path complexity**: rolled back `DATA_ROOT` env var, `checkDirWritable`, extra `MkdirAll` — returned to original simple `filepath.Join(wd, "data", "rms-mail-mono.db")`
+
+#### Unread Filter — Inconsistent Count
+Unread filter badge showed `emails.filter(e => !e.is_read).length` — count of loaded page only (e.g. 48). Actual unread: 455.
+
+- **Fixed**: `GET /api/emails/count?unread=true` with server-side `is_read=false AND is_muted=false`
+- **`GetEmailCount` extended**: accepts `unread bool` parameter, adds `is_muted = false` filter
+- **Frontend**: `useEffect` fetches server-side count, re-fetches when email list data changes
+
+#### Unread List — Missing `is_muted` Filter
+Unread filter in email list (`is_read=false`) excluded muted emails from count but NOT from the list. 3 muted+unread emails appeared in list but were absent from badge.
+
+- **Fixed**: added `is_muted=false` to all 5 Unread filter conditions in both PostgreSQL and SQLite stores
+
+#### Groups — No Loading State
+Create Group button had no disabled/loading state during async submission. Multiple rapid clicks created duplicate groups.
+
+- **Fixed**: `disabled={createGroup.isPending || updateGroup.isPending}` + loading text
+
+#### Bulk-by-Filter — IMAP Sync Skipped After Move (Unified)
+After `BulkMoveByFilter` moved emails to trash/archive, `GetEmailIDsByFilter(sourceFolderID)` returned empty — no IMAP enqueue was performed. Emails were moved in DB but IMAP server was never notified.
+
+- **Fixed**: fetch email IDs BEFORE the move, then enqueue IMAP after. Non-unified path was already correct.
+
+#### `shiftPGPlaceholders` — Parameter Corruption
+String replacement loop (`$10 → $11`, then `$1 → $2`) caused double-replacement: `$10` shifted by 1 became `$21` instead of `$11`. Currently safe (only `$1`/`$2` used) but would silently corrupt queries if more parameters were added.
+
+- **Fixed**: intermediate marker pattern (`$10 → __PGH__11__ → $11`) — replacement-safe regardless of parameter count.
+
+#### Bulk-by-Filter — Snoozed Emails Counted
+Unified subquery in `buildFilterWhere` was missing the `snooze_until` filter present in `GetEmails`. Snoozed emails appeared in `GetEmailCount`/`GetEmailIDsByFilter` but were excluded from the email list — causing count/list mismatch.
+
+- **Fixed**: `AND (e2.snooze_until IS NULL OR e2.snooze_until <= NOW())` added to unified subquery in both SQLite and PostgreSQL.
+
+#### Sync Worker — Memory Accumulation
+`messages = append(messages, batchMsgs...)` in the batching loop accumulated 250K `FetchMessageBuffer` objects during full sync — dead code (never read, `return nil` before access).
+
+- **Fixed**: removed the append. Probe-success single-fetch path unaffected.
+
+#### Frontend — Unread Counter Polling Churn
+`useEffect` depended on `emails` array — every data refetch triggered a `/count` server request, creating positive feedback loop.
+
+- **Fixed**: replaced `emails` dep with `unreadRefetchTrigger` — bumped in `clearSelected()` after every bulk action, triggers re-fetch only on actual state changes.
+
+#### Groups Tab — Correlated Subquery (Production)
+`GetGroups` used a correlated subquery to compute unread count per group. For each group, PostgreSQL executed `SELECT COUNT(*) FROM emails JOIN folders JOIN project_group_accounts WHERE group_id = pg.id`. With 250K emails and 3 groups: 750K row scans per call. Instant on local (50 emails), 30+ seconds on production.
+
+- **Fixed**: replaced correlated subquery with `LEFT JOIN + COUNT(FILTER)` pattern. Single table scan instead of N subquery executions.
+
+### Added
+
+- **`GetEmailCount` endpoint**: `GET /api/emails/count?account_id=X&folder_id=Y&unread=true` — lightweight server-side count for filter badges and Select All
+- **`GetAccountIDsByFilter`**: returns distinct account IDs matching unified folder filter (used for per-account grouping in bulk operations)
+- **`poolctx` package**: shared context-key package for dual-pool selection, no circular dependencies
+
+## [3.0.2] — 2026-06-10
 
 ### Changed
 

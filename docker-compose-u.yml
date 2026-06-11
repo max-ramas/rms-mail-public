@@ -69,6 +69,7 @@ services:
       STORAGE_ROOT: /app/storage
       PORT: "8080"
       PG_MAX_CONNS: "20"
+      SYNC_BATCH_DELAY_MS: "2000"
     depends_on:
       postgres:
         condition: service_healthy

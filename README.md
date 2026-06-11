@@ -442,7 +442,8 @@ cd rms-mail-public
 # 2. Set up your environment variables
 cp .env-m.example .env
 
-# 3. Configure your `ENCRYPTION_KEYS` and `JWT_SECRET` inside the .env file
+# 3. Configure your `ENCRYPTION_KEYS` or `ENCRYPTION_KEY` and `JWT_SECRET` inside the .env file
+# (You only need to enter the `ENCRYPTION_KEYS` or `ENCRYPTION_KEY` and `JWT_SECRET`; that is all the app needs to function)
 # To generate a secure random 32-byte hex key, run: openssl rand -hex 32
 
 # 4. Copy the Mono-specific compose configuration
@@ -468,9 +469,9 @@ cp .env-u.example .env
 
 # 3. Configure required variables inside the .env file:
 # - `POSTGRES_PASSWORD` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
-# - `ENCRYPTION_KEYS` (Multi-key rotation comma-separated list)
-# - `JWT_SECRET` (Independent token key material)
-# - `CAMO_HMAC_KEY` (For external image proxy hashing)
+# - `ENCRYPTION_KEYS` or `ENCRYPTION_KEY`(To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `JWT_SECRET` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `CAMO_HMAC_KEY` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
 
 # 4. Copy the Unified-specific compose configuration
 cp docker-compose-u.yml docker-compose.yml

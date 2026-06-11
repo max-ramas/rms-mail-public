@@ -215,7 +215,7 @@ Especially people who:
 
 | Edition | Status | Purpose |
 | :--- | :--- | :--- |
-| **Mono** | **Stable / RC** | Multi-user deployment with strict 1:1 user-to-mailbox isolation (SQLite). |
+| **Mono** | **Stable** | Multi-user deployment with strict 1:1 user-to-mailbox isolation (SQLite). |
 | **Unified** | **Released** | Multi-account workspace with unified inboxes (PostgreSQL + Redis). |
 | **Teams** | **Planned** | Shared mailbox collaboration & helpdesk workflows. |
 

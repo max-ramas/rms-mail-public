@@ -18,6 +18,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-rmsmail}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-rms-mail}
+    command: >
+      -c shared_buffers=512MB
+      -c effective_cache_size=2GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=256MB
+      -c max_connections=50
     volumes:
       - ./pgdata:/var/lib/postgresql
     healthcheck:

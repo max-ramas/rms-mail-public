@@ -33,6 +33,14 @@
 
 ---
 
+⚠️ Important Notice for Self-Hosters
+Hey everyone, a quick note regarding update frequency: If I spot issues, hidden bugs, or performance bottlenecks under high load, I push fixes immediately. Because of this, you might see multiple patch releases within a single day.
+Don't be alarmed by the frequent notifications. I use this app as my primary daily driver, and as a perfectionist, I refuse to tolerate even minor quirks in production.
+My philosophy is simple: it is much better to deploy a hotfix instantly and maintain a clean production environment than to accumulate massive changelogs over months while leaving hidden landmines in the code.
+I highly recommend always pulling and running the latest build. Keep your containers updated and enjoy the rock-solid stability! 🚀
+
+---
+
 ## 🚧 Current State
 
 RMS Mail is actively developed and used in intense real-world highload production workflows.

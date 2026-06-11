@@ -2,6 +2,54 @@
 
 All notable changes to RMS Mail will be documented in this file.
 
+## [3.0.4] — 2026-06-12
+
+### Changed
+
+#### IMAP `\Seen` Flag Implementation — Bidirectional Read-State Sync
+The IMAP `\Seen` flag was completely ignored in both directions. Emails were always inserted as `is_read=false` (except Sent folders), and local read/unread changes were never pushed to the IMAP server.
+
+**IMAP → RMS (reading `\Seen`)**:
+- `fetcher.go`: `ProcessMessage` and `ProcessMessageToFolder` now parse `msg.Flags` and set `email.IsRead = true` when `\Seen` is present. Previously always `false`.
+
+**Atomic ON CONFLICT (race condition protection)**:
+- `SaveEmailToFolder` and `SaveEmail` in both PostgreSQL and SQLite: `ON CONFLICT ... DO UPDATE SET is_read = CASE WHEN emails.is_dirty_locally THEN emails.is_read ELSE EXCLUDED.is_read END`. If user changed read-state locally (`is_dirty_locally=true`), server value is not overwritten. Otherwise, sync updates from IMAP `\Seen`.
+
+**RMS → IMAP (pushing `\Seen`)**:
+- `worker.go`: `syncFlags()` — after main sync cycle, queries `GetDirtyEmails` (LIMIT 500), groups by read/unread status, sends batched IMAP `STORE` commands (200 UIDs per batch via `StoreFlagsAdd`/`StoreFlagsDel`).
+- `ClearDirtyFlag()`: resets `is_dirty_locally=false` after successful IMAP flag sync.
+
+### Added
+
+- **SQLite-Backed Webhook Retry Queue (Mono Edition)**: Implemented an embedded, persistent retry queue (`webhook_retry_queue` table + background Go ticker) for webhooks in the Mono edition. This ensures webhook retries survive container restarts, bringing Mono's reliability on par with the Unified edition's Redis ZSET queue.
+- **`GetDirtyEmails(ctx, accountID) ([]Email, error)`**: returns emails with `is_dirty_locally=true`, excluding drafts (separate `GetDirtyDrafts` path)
+- **`ClearDirtyFlag(ctx, emailID) error`**: clears the dirty flag after successful IMAP STORE
+- **`SyncStore` interface**: both methods added to sync package interface alongside existing `GetDirtyDrafts`
+
+### Fixed
+
+#### UI Freezes during License Validation & Ping
+- **License Check (`isLicensed`)**: completely rewritten to be non-blocking. It now unconditionally returns the cached value immediately and fetches the live DB status asynchronously in the background. Fail-open on initial boot ensures zero block on the first request.
+- **License Ping**: The HTTP API handler for saving the license key now triggers the background ping asynchronously (`goroutine`) and unconditionally returns `{"status": "ok"}` to the frontend immediately. This prevents the UI from freezing if the RMS license server is unreachable.
+
+#### Database Pool Exhaustion & Silent Account Lockouts
+Concurrent background index builds (`CREATE INDEX CONCURRENTLY` across 64 partitions) saturated disk I/O and exhausted the PostgreSQL connection pool. This caused unrelated API queries—specifically `isLicensed` and `GetUnreadCount`—to timeout.
+- **Fixed (License Manager)**: Transient `isLicensed` timeouts incorrectly triggered `is_locked: true` on the frontend, instantly kicking users out. Implemented a `sync.RWMutex` backed 30-second TTL cache, and a 5-minute graceful fallback if the database query fails.
+- **Fixed (IO Breather)**: Added a `time.Sleep(2 * time.Second)` pause between FTS partition index creations in `RunBackgroundOptimizations` to allow the database to breathe and serve user requests.
+- **Fixed (Build Error)**: Replaced orphaned `buildFTSPartitions` call in `main.go` with `store.RunBackgroundOptimizations(context.Background())`.
+
+#### Mono Edition Build Failure
+- **Fixed**: `invalid operation: store ... is not an interface`. The SQLite driver returns a concrete pointer type `*sqlite.Storage` instead of an interface, causing the `RunBackgroundOptimizations` type assertion to fail compilation. Wrapped with `any(store)` to satisfy the Go compiler for both editions.
+
+#### Frontend — Group Color Missing for Long Names
+Group names without `truncate` pushed the color dot outside the `overflow-hidden` container. Fixed: `shrink-0` on arrow/dot/count, `min-w-0 truncate` on name, `is_locked` badge moved outside name span.
+
+#### GetGroups CTE Optimization
+Correlated subquery replaced with `WITH inbox_unread AS (...)` CTE. 3 group subqueries × 250K emails → single hash join over ~500 filtered rows.
+
+#### `\Seen` ON CONFLICT Previously Overwrote Server State
+Original `ON CONFLICT DO UPDATE SET is_read = emails.is_read` always preserved DB value, even on first sync where `\Seen` should be the source of truth. New `CASE WHEN` logic correctly distinguishes first sync from local modifications.
+
 ## [3.0.3] — 2026-06-11
 
 ### Changed
@@ -11,6 +59,12 @@ Background sync now uses a hybrid strategy to balance UI responsiveness with dat
 - **Initial Fast Fetch**: On a completely new inbox (`lastUID=0`), the worker performs a rapid descending fetch of the top 200 emails to populate the UI immediately without altering the database high-watermark.
 - **Historical Ascending Sync**: The main sync loop fetches UIDs in ascending order (`1 → UIDNext`). Progress (`lastUID` checkpoint) is saved safely after every batch. If a crash occurs, sync resumes perfectly without data loss.
 - **Sync throttling**: `SYNC_BATCH_DELAY_MS` env var (default 500ms) pauses between batches to prevent DB pool exhaustion
+
+#### PostgreSQL — Asynchronous Partition FTS Indexing (Deadlock Fix)
+- Removed `CREATE INDEX IF NOT EXISTS idx_emails_fts ON emails USING gin(fts);` from `schema.sql` to prevent synchronous `SHARE` locks on the entire table and all 64 partitions at startup, which previously exhausted connection pools and caused Docker healthcheck crashes on large databases.
+- Added `BuildFTSPartitionsConcurrently` in the background, which iterates over the 64 hash partitions (`emails_p00` to `emails_p63`) and builds the GIN indices safely and independently using `CONCURRENTLY`.
+- Unified backend now starts instantly, connection pools remain free, and FTS indexing occurs entirely asynchronously without blocking `INSERT`/`UPDATE` operations.
+
 
 #### Dual-Pool PostgreSQL — Sync Worker Isolation
 IMAP sync workers now use a dedicated 5-connection pool, separate from the 20-connection HTTP pool. Eliminates UI freezes during heavy sync on 200K+ inboxes.

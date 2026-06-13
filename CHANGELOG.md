@@ -1,6 +1,312 @@
 # Changelog
 
-All notable changes to RMS Mail will be documented in this file.
+## [3.0.5] — 2026-06-13
+
+### Stability & Concurrency Improvements
+- **IMAP Streaming (OOM Fix)**: Removed massive memory allocations (`msg.Collect()`) during email synchronization. Implemented true `io.Reader` streaming that writes raw IMAP streams directly to a local `.eml` temporary file. This ensures `O(1)` memory consumption per folder regardless of email and attachment sizes.
+- **Pgxpool Connection Limits**: Hardened PostgreSQL connection pooling by explicitly configuring `MinConns=5` and bounding `MaxConns` limits (defaulting to 100) to prevent connection drop timeouts under heavy load.
+
+- **IMAP Sync Parallelism**: Massively parallelized IMAP fetch processing in `SyncWorker`. Batched multiple message UIDs into a single IMAP `FETCH` command to reduce latency, and implemented a bounded `errgroup` (max 4 concurrent CPU parsers per worker) to accelerate MIME parsing and prevent long CPU blocking loops.
+- **Database Dual-Pool Isolation**: Segregated background sync jobs into a dedicated `syncPool` (5 connections) using `poolctx.WithSync(ctx)`, guaranteeing that heavy sync jobs never exhaust the primary API connection pool (20 connections).
+- **HTTP Panic Recovery**: Resolved `panic: pattern "/api/health" conflicts` on startup by removing duplicate route registrations in the `ServeMux`.
+- **Storage Cleanup**: Overhauled `ResetAccountSync` to properly purge orphaned physical files (`.eml` and attachments) from the disk rather than just clearing the database, preventing indefinite storage bloat.
+- **SQLite Concurrency**: Explicitly enabled `PRAGMA busy_timeout=30000;` on SQLite connections to mitigate `database is locked` (SQLITE_BUSY) errors during heavy read/write contention in Mono edition.
+
+### Bug Fixes
+- **Email Read Status**: Fixed a critical bug where fetching new incoming emails automatically marked them as read on the server by enabling `Peek: true` in the IMAP `FetchOptions` body section specifier.
+- **Frontend Filters**: Implemented empty group filtering in the frontend to automatically hide project groups that contain no accounts.
+- **HTML Email Layout**: Restored rendering of legacy table alignments (`align`, `valign`, `bgcolor`) and body backgrounds by refactoring the HTML sanitizer policy and preserving the `<body>` tag as a surrogate `<div>`.
+- **429 Rate Limit Storm**: Debounced React Query invalidations triggered by SSE `new-email` events, preventing initial IMAP syncs from spamming the backend and triggering global IP rate limiting lockouts.
+- **Frontend API Guardrails**: Fixed infinite 404 retry loops in Mono edition by adding conditional checks to prevent React Query from fetching non-existent endpoints (e.g., `/api/users`, `/api/groups`).
+- **Initial Sync Cycle**: Ensured `SyncAllFolders` is explicitly called during `runSyncCycle`, fixing an issue where newly connected or reset accounts failed to download historical emails until manually poked.
+- **CI Build Fix**: Removed `*server*` from `.gitignore` to unblock `go vet` and remote builds that were failing due to missing `internal/async/server.go`.
+
+### Database Optimizations
+- **Keyset Pagination (PostgreSQL & SQLite)**: Completely eliminated slow `OFFSET` and nested `OR` conditions for email pagination. Implemented strict tuple comparison `(is_pinned, date_sent, id) < ($1, $2, $3)` for O(1) query latency at any depth, and added a dedicated covering index `idx_emails_pagination` to `schema.sql`.
+
+- **PostgreSQL**: Added a composite index on `(folder_id, is_read, is_muted)` to eliminate sequential scans when the background worker recalculates folder unread counts every 30 seconds.
+- **SQLite (Mono Edition)**: Added missing `idx_emails_folder_isread` index to `schema_mono.sql` to eliminate full table scans and database freeze scenarios during `RefreshUnreadCounts` background tasks.
+
+### Fixed
+
+#### IMAP Sync — New Emails Incorrectly Marked as Read
+IMAP server (e.g. Gmail) was automatically marking newly pushed emails as `\Seen` on the server-side because our fetcher requested the email body without the `Peek` parameter, causing them to appear as "read" in the UI instantly.
+**Fix (worker.go):**
+- Added `Peek: true` to `FetchItemBodySection` in the sync worker to prevent IMAP fetches from altering the `\Seen` flag.
+
+#### Disk Storage Bloat — Uncollected Files on Resync
+Triggering "Reset Account Sync" deleted the database rows for emails and attachments, but left the physical `.html` and attachment files orphaned on the disk, causing infinite storage bloat.
+**Fix (storage.go for Postgres & SQLite):**
+- Added synchronous disk garbage collection to `ResetAccountSync`. The backend now explicitly queries and iterates over all `body_path` and attachment `path` strings and calls `os.Remove()` before wiping the database rows.
+
+#### Database Performance — 5-10 Second Latency & Timeout Fixes
+Opening an email thread or rendering the inbox list experienced massive delays (up to 10s) due to missing covering indexes and sub-optimal queue lookups.
+**Fix (schema.sql, storage.go):**
+- Added composite coverage indexes `idx_emails_thread`, `idx_emails_unread_fast`, and `idx_emails_folder_isread` to speed up the massive `COUNT(*)` and thread queries.
+- Modified the sync worker queue index `idx_sync_queue_fetch_active` to prioritize `account_id` as the primary prefix, rescuing the sync worker from table scans.
+
+#### HTML Emails — Layout and Formatting Stripped
+Emails formatted with legacy HTML tables (`align`, `valign`, `bgcolor`) and body backgrounds lost all structural layout and colors because `bluemonday` aggressively stripped the `<body>` tag and deprecated presentation attributes.
+**Fix (email_handlers.go, email_normalize.go):**
+- Restored `align`, `valign`, and `bgcolor` attributes globally across `table`, `tr`, `td`, and `th` tags in the `bluemonday` policy.
+- Modified `normalizeEmailHTML` to dynamically rename the top-level `<body>` tag into `<div id="rms-mail-body-surrogate">` before sanitization, bypassing `bluemonday`'s body-stripping behavior while safely preserving all inline body styles and backgrounds.
+
+#### SQLite_BUSY — Database Locked During Sync (Mono)
+Heavy background tasks, specifically IMAP syncs and folder unread counts, caused SQLite to throw `database is locked (5) (SQLITE_BUSY)` and block the API, Webhook poller, and other workers.
+**Fix (schema_mono.sql, storage.go):**
+- Added missing composite coverage index `idx_emails_folder_isread` to `schema_mono.sql` which instantly resolved 10s+ table scans during the `RefreshUnreadCounts` background task.
+- Explicitly set `PRAGMA busy_timeout=30000;` on the LibSQL driver initialization, instructing SQLite to queue concurrent write locks instead of failing instantly.
+
+#### Empty Groups Visible in UI
+The frontend sidebar displayed Project Groups even when they contained no accounts (e.g. after removing accounts from a group).
+**Fix (email-sidebar.tsx & models/email.go):**
+- Added `accounts_count` to the `ProjectGroup` backend model.
+- The frontend now explicitly filters out any group where `accounts_count == 0`.
+
+#### 429 Rate Limit Storm on Initial Sync
+When logging into a new account, the backend's initial IMAP sync emitted an SSE `new-email` event for **every single email downloaded**. The frontend's `useEmails.ts` reacted to each event instantly by invalidating queries, causing thousands of concurrent API requests that hit the backend's `InMemoryRateLimiter` limit (300 requests/minute), locking the user's IP globally across all `/api/*` endpoints.
+**Fix (useEmails.ts):**
+- Wrapped React Query invalidation and Desktop Notifications in a 2000ms `setTimeout` debounce.
+- Incoming email bursts are now processed as a single UI update.
+- Clustered desktop notifications into a single "You have N new emails" summary to prevent notification spam.
+
+#### Initial Historical Sync Stall
+Newly connected IMAP accounts (or accounts that were manually reset) were relying solely on the IMAP IDLE push mechanism or periodic jobs to fetch historical emails. They didn't proactively perform a full folder walk.
+**Fix (worker.go):**
+- Added an explicit `SyncAllFolders(ctx, c, acc)` call into `runSyncCycle()` so both `Mono` and `Unified` editions reliably execute a full top-down synchronization of all folders during their primary sync loop.
+
+#### Missing Build Dependency (.gitignore)
+The `go vet` and remote CI builds were failing with "undefined" reference errors for the background job server.
+**Fix (.gitignore):**
+- Removed `*server*` from the `.gitignore` exclusions to ensure `internal/async/server.go` is properly committed to the repository.
+
+#### Frontend Infinite 404 Retry Loops (Mono Edition)
+In the `Mono` (or whitelabel) edition, the backend deliberately doesn't mount the `/api/users` and `/api/groups` endpoints. React Query in the frontend received a `404 Not Found` for these endpoints and entered an aggressive exponential backoff retry loop, creating unnecessary network noise and contributing to rate limiting.
+**Fix (useEmailQueries.ts):**
+- Added strict `enabled` gating checks `typeof window !== "undefined" && localStorage.getItem("geomail_edition") !== "mono" && !window.location.host.startsWith("wm.")` to all administrative queries so they simply skip fetching when running in a standalone environment.
+
+
+#### MIME Parsing — Gmail IMAP Body-Section Ordering & Boundary Corruption
+Gmail IMAP returns `BODY[HEADER]` and `BODY[TEXT]` in arbitrary order. The old code took only the first section (`break` after one iteration), passing either bare headers or bare body text to `enmime.ReadEnvelope` — causing `malformed MIME header initial line` on **every** email synced via the consumer queue.
+
+**Fix (fetcher.go — ProcessMessage + ProcessMessageToFolder):**
+- Sections are now identified by `Specifier` and reordered: HEADER always first, then `\r\n` separator, then TEXT. Forms a complete RFC822 message.
+- `repairMIMEBoundaries()` regex fixes Gmail's missing CRLF between MIME boundaries and the next header (`--abc123Content-Type:` → `--abc123\r\nContent-Type:`). Matches hex, alphanumeric, and `_/+=` boundaries.
+
+#### XOAUTH2 — Infinite Authentication Loop (CheckWorker)
+`CheckWorker.runSession()` created a temporary `SyncWorker` per attempt. When `refreshToken()` succeeded, it updated only the temporary worker's local Account copy — the CheckWorker's `Account` remained stale. Each retry re-created a new SyncWorker from the stale copy → infinite `AUTHENTICATIONFAILED` loop.
+
+**Fix (checker.go, worker.go, manager.go):**
+- CheckWorker re-fetches fresh credentials from DB after `"token refreshed, need reconnect"` error.
+- `Manager.LockTokenRefresh(accountID)` — per-account mutex serializes OAuth token refreshes. Only one goroutine calls Google; others wait and proceed with fresh tokens.
+- `refreshToken()` in SyncWorker acquires the per-account lock before refreshing.
+
+#### ON CONFLICT — Missing Unique Constraints (SQLSTATE 42P10)
+`EnqueueUIDs` (`ON CONFLICT (account_id, folder_name, uid)`) and `SaveEmailToFolder` (`ON CONFLICT (msg_id, account_id, folder_id)`) require unique indexes that may not exist in production databases after resync/rebuild.
+
+**Fix (sync_queue.go, storage.go):**
+- `EnqueueUIDs` catches 42P10 → falls back to `INSERT ... WHERE NOT EXISTS`.
+- `SaveEmail` / `SaveEmailToFolder` catch 42P10 → fall back to check-then-insert-or-update.
+- Schema: added `emails_msg_id_account_folder_key` unique index (3-column).
+
+#### GetFolders — 3-Minute Freeze on Folder List
+Correlated `COUNT(*)` subquery with nested smart-category `NOT IN` executed **per folder row**. On 50K emails × 10 folders = minutes.
+
+**Fix (storage.go, schema.sql, queue_manager.go):**
+- Added `folders.unread_count INT DEFAULT 0` column.
+- `GetFolders` now reads `COALESCE(f.unread_count, 0)` directly (sub-millisecond).
+- `RefreshUnreadCounts()` runs every 30s — single batch `UPDATE` for all folders, not per-folder.
+- Partial index `idx_emails_folder_unread` for fast counting.
+
+#### GetEmails — Correlated NOT IN on Every Row (Smart Categories)
+`e.msg_id NOT IN (SELECT e2.msg_id ... WHERE e2.account_id = e.account_id ...)` — correlated subquery executed per email row.
+
+**Fix (storage.go, schema.sql):**
+- Added `emails.smart_category BOOLEAN DEFAULT false` column.
+- `RefreshUnreadCounts` tags Promotions/Social/Updates emails in background.
+- `GetEmails` filters with simple boolean: `e.smart_category = false` instead of correlated NOT IN.
+- Partial index `idx_emails_smart_cat` for fast filtering.
+
+#### SQLITE_BUSY — Database Locked Without Backoff (Mono Edition)
+Webhook poller and queue manager hit `database is locked` and retried at fixed intervals, causing CPU thrashing.
+
+**Fix (webhook_queue_mono.go, queue_manager.go):**
+- Exponential backoff (up to 10s) on `SQLITE_BUSY` / `database is locked` errors.
+
+#### GetStatsByAgent — N+1 Query Pattern (SQLite)
+Separate `SELECT COUNT(*)` per agent row instead of aggregating in the main query.
+
+**Fix (sqlite/storage.go):**
+- `SUM(CASE WHEN e.is_read = 0 THEN 1 ELSE 0 END)` in GROUP BY — single query.
+
+### Security
+
+- **Secrets in Logs**: Removed MCP API key + request body logging (`misc_handlers.go:491-493`). OAuth error responses no longer include full HTTP body (may contain tokens). Removed DEBUG username log in `authenticate()`.
+- **SSRF**: Block cloud metadata endpoints (`169.254.169.254`, `metadata.google.internal`) in all editions including Mono.
+- **Graceful Shutdown**: `StopAll()` now waits for worker goroutines via `sync.WaitGroup` (15s timeout) instead of returning immediately.
+- **Query Timeout**: PostgreSQL pools configured with `statement_timeout = 30s` (overridable via `PG_STATEMENT_TIMEOUT` env). Prevents hung queries from blocking workers indefinitely.
+- **JSON Marshal Errors**: `GetEmails` no longer swallows `json.Marshal` errors — returns 500 instead of empty 200.
+- **Content-Type**: `HandleLicense` and other handlers now set `Content-Type: application/json`.
+
+### Added
+
+- **Folder Management Module**: REST endpoints for IMAP folder CRUD with system folder protection and frontend UI.
+- **Test Deployment Pipeline**: `build-and-push-test.sh` + `docker-compose-u-test.yml` / `docker-compose-m-test.yml` for isolated staging deployments with `:test` image tags.
+- **Configurable Pool Sizes**: `SYNC_MAX_WORKERS`, `PG_SYNC_MAX_CONNS` environment variables.
+- **Health & Metrics Endpoints**: `GET /api/health` returns `{"status":"ok"}` for Docker healthcheck. `GET /metrics` exposes 16 Prometheus counters (`rms_mail_emails_synced_total`, `http_requests_total`, etc.) via `api.MetricsHandler`.
+- **Asynq Task Queue (Unified)**: Replaced fire-and-forget goroutines with Redis-backed persistent task queue. Telegram notifications, avatar resolution, webhook dispatch, and unread count refresh now use `asynq` with automatic retries, exponential backoff, and queue priorities (`critical:6, default:3, low:1`). `internal/async/` package with `TaskClient` + `TaskServer`.
+- **LibSQL Driver (Mono)**: Migrated from `ncruces/go-sqlite3` to `tursodatabase/libsql-client-go`. Pure Go WASM driver, `CGO_ENABLED=0`, single-writer connection (`MaxOpenConns=1`), WAL mode, `busy_timeout=30000`. Zero external dependencies — local file only.
+- **Audit Hardening (TOCTOU)**: Fallback save paths (`saveEmailFallback`, `saveEmailToFolderFallback`) now use `ON CONFLICT DO NOTHING` to prevent race conditions on concurrent saves. MIME boundary regex expanded to support `-` character in boundaries.
+- **SyncAllFolders Auto-Discovery**: `runSyncCycle` now calls `SyncAllFolders` on every connection — new accounts get all folders discovered and synced immediately (previously INBOX-only until CheckWorker intervened).
+- **All Folders Synced**: `ListFolders` no longer skips parent folders that have children — emails in nested folders are no longer silently lost.
+- **SMTP via Asynq**: `SendEmail` handler now uses Asynq task queue (`EnqueueSendEmailDelayed`) when Redis is available, with Scheduler fallback. Full send pipeline via `HandleSendEmail` callback.
+- **asynqmon Dashboard**: Asynq monitoring UI at `/mon/` (Unified only, Redis required) for task queue inspection.
+- **Final Security Hardening**: Password hex-dumps removed from ALL locations (`worker.go`, `manager.go`). JWT leak in MCP logs fixed (`r.URL.Path` instead of `r.URL.String()`). Identity CREATE/DELETE now require `CheckAccountAccess`. OAuth error responses stripped of full HTTP body. Shared `http.Client` for webhook dispatches with proper body drain.
+
+### Hardening Sprint — 2026-06-13
+
+#### Security
+- **JWT Revocation (Blacklist)**: Redis-backed token blacklist. Tokens revoked on password change; blacklist checked in `JWTAuthMiddleware`. Mono edition is a safe no-op (`nil` Redis).
+- **Webhook HMAC Fix**: `webhook_queue.go` and `job_worker.go` were sending the RAW SECRET as `X-Signature-256` header — now compute `HMAC-SHA256(secret, payload)`. Secret never leaves the server.
+- **Encryption Domain Separation**: `encryptPassword` now derives per-domain AES keys via `SHA256(raw || ":" || domain)` — IMAP passwords, OAuth tokens, MCP keys, and Telegram tokens each use independent key material (`imap_password`, `oauth_token`, `mcp_key`, `telegram_token`). Decryption falls back to raw key for legacy data.
+- **MCP SSE Cross-Account Isolation**: MCP SSE event loop now filters events by `sessionAccountID` — an MCP client bound to account A cannot receive `new-email` events from account B. SSE (regular) already had `CheckAccountAccess`.
+- **Token in Query String**: Deprecation warning logged when JWT is passed via `?token=` on non-SSE routes. Both `Authorization: Bearer` and `?token=` accepted; frontend already uses headers.
+
+#### Concurrency & Performance
+- **Mono Edition Multi-User Fix**: `MaxOpenConns` raised from 1 to 25, `MaxIdleConns` from 1 to 5. WAL mode now actually parallelizes: readers don't queue behind writers. DSN includes `_synchronous=NORMAL`, `_cache_size=-64000`, `_foreign_keys=ON` so every pooled connection gets them. Result: M edition handles 20-30 concurrent users without queueing.
+- **Worker Round-Robin Rotation**: New `maybeRotateWorkers` evicts the oldest worker every 5 minutes when all `maxWorkers` slots are occupied. `bootstrapMissingWorkers` fills freed slots from the waiting queue. Prevents a single heavy account from starving others indefinitely.
+- **`maxWorkers` Default**: Raised from 10 to 50. New accounts (`created_at DESC`) get priority for initial sync.
+- **Goroutine Leak Mitigation**: `waitWithTimeout` goroutine now respects parent context cancellation — won't block on send when caller has abandoned the channel. IMAP-layer context-awareness remains a future improvement.
+- **SendScheduler Lifecycle**: `recoverFromRedis`/`recoverFromDB` goroutines now start via explicit `Start()` call after `SetStore`/`SetContext`, eliminating the race window where they polled with nil dependencies.
+- **Webhook `CloseIdleConnections`**: Added deferred cleanup to per-call `http.Client` in webhook dispatchers to prevent socket accumulation under load.
+
+#### UX
+- **GetFolders SQL Ordering**: `CASE WHEN UPPER(name) = 'INBOX' THEN 1 ... THEN 3 ELSE 2 END` — INBOX always first, custom labels alphabetical, Trash/Spam/Junk forced to bottom. Gmail `[Gmail]/Trash` and `[Gmail]/Spam` recognized. Applied to both Postgres and SQLite.
+- **Smart Categories Instant Refresh**: Toggling `smart_categories` now calls `RefreshUnreadCounts` immediately instead of waiting for the 30-second periodic refresh.
+
+#### Code Quality
+- **`WakeUpCh` Dead Code Removed**: Channel never had a consumer. `WakeUpAccount` now calls `TriggerRefresh()`.
+- **`OnNewEmail` De-globalized**: Moved from package-level `var` to `Manager.OnNewEmail` field. Wired through `Fetcher` struct.
+- **`camoCache` LRU**: Replaced unbounded `sync.Map` with `container/list`-backed LRU (10K entries, periodic cleanup at 80% capacity).
+- **`stripHTMLTagsFast` Entity Decoding**: Post-processes with `strings.NewReplacer` for `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#39;`, `&nbsp;` — improves AI summary quality.
+- **`slogWriter` Level**: IMAP debug trace now uses `slog.Debug` instead of `slog.Info` to avoid log spam at default level.
+- **`notification.RateLimiter` Drop Message**: Now logs queue depth (`%d pending`) when dropping.
+- **`ProcessAutoDraftJob` Robustness**: `context.Background()` replaced with proper `ctx`; ignored error on `GetAccount` now logged; `AppendToDraftsDeduplicated` is synchronous (error → job retry instead of silent loss).
+- **`forceRestartWorkers` TOCTOU**: Added `LockChecker` call before starting each worker — an account locked between `GetAccounts` and worker start is now skipped.
+- **Orphaned EML Cleanup**: `ProcessMessage` and `ProcessMessageToFolder` now `os.Remove(bodyPath)` when `SaveEmail` fails after the EML file was already written.
+- **`generateAIDraft` Asynq Wiring**: `HandleGenerateAIDraft` now delegates to `OnGenerateAIDraft` callback → `ProcessAutoDraftJob` — Stage 3 is operational.
+- **Webhook Dispatch via Asynq**: `sendWebhookWithRetry` now enqueues through `AsyncClient.EnqueueDispatchWebhook` when Redis is available. Webhooks get persistent queue, automatic retries (5x), and `asynqmon` dashboard visibility. Falls back to Redis ZSET (Unified without Asynq) → SQLite (Mono).
+- **AI Draft via Asynq**: `handleAutoDraft` now prefers `EnqueueGenerateAIDraft` over DB job queue when AsyncClient is available. Falls back to DB queue for Mono.
+- **`ResetAccountSync` Full Cleanup**: Clearing `email_sync_queue`, `imap_move_queue`, `scheduled_emails`, `email_comments`, and `emails_fts` (SQLite) on account reset. Previously, `email_sync_queue` retained `completed` tasks that blocked re-enqueue via `WHERE status != 'completed'` guard in `EnqueueUIDs` — causing 0 emails after resync. Now all sync state is fully purged so the worker performs a clean full re-sync.
+- **Startup DB Flood Prevention**: `OnNewEmail` and `SetEventBroadcast` callbacks no longer call `store.GetEmail` on the main DB pool. Previously, every synced email triggered 2 `GetEmail` queries on the main pool (one in `OnNewEmail`, one in `InvalidateEmailCacheByEmailID`). With 200K+ Gmail inboxes, this generated 400K queries competing with HTTP handlers — causing 10-minute API paralysis after restart. Now `OnNewEmail` receives `subject`/`senderName`/`senderAddr` directly from the Fetcher (zero DB queries), and broadcast cache invalidation uses `account_id` from the payload instead of re-fetching the email.
+- **Redis Caching — Full Coverage**: All read-heavy GET endpoints now use Redis cache with appropriate TTLs and automatic invalidation via `InvalidateMetaCache` on mutations:
+  - `GetEmails` (5min), `GetFolders` (30s), `GetAccounts` (10s), `GetGroups` (30s)
+  - `GetLabels` (60s), `GetRules` (30s), `GetTemplates` (60s), `GetContacts` (30s)
+  - `GetIdentities` (60s), `GetWebhooks` (30s), `AIModels` (1h)
+  - `InvalidateMetaCache` clears all per-account caches on CRUD operations. `InvalidateEmailCache` also clears folder caches. New `InvalidateMetaCache` helper for bulk invalidation on account/group mutations. Reduces DB load on every page load from 4+ queries to 0 (cache hit) or 1 (cache miss + write). Previously, every synced email triggered 2 `GetEmail` queries on the main pool (one in `OnNewEmail`, one in `InvalidateEmailCacheByEmailID`). With 200K+ Gmail inboxes, this generated 400K queries competing with HTTP handlers — causing 10-minute API paralysis after restart. Now `OnNewEmail` receives `subject`/`senderName`/`senderAddr` directly from the Fetcher (zero DB queries), and broadcast cache invalidation uses `account_id` from the payload instead of re-fetching the email.
+
+### Bug Fix — Resync Produced Zero Emails
+`ResetAccountSync` deleted emails from the DB but left 6148 `completed` rows in `email_sync_queue`. When `SyncAllFolders` re-enqueued UIDs, the `ON CONFLICT ... DO UPDATE ... WHERE status != 'completed'` clause skipped them all. The consumer loop dequeued nothing → 0 emails appeared after resync.
+**Fix (postgres/storage.go, sqlite/storage.go):**
+- `DELETE FROM email_sync_queue WHERE account_id = $1` added before folder/account UID reset.
+- Also added cleanup for `imap_move_queue`, `scheduled_emails`, `email_comments` (belt-and-suspenders for tables with FK CASCADE).
+- SQLite: `DELETE FROM emails_fts` (FTS5 virtual table has no FK support, would accumulate orphaned index entries).
+
+### Performance Sprint — 2026-06-13
+
+#### Keyset Pagination (O(1) page depth)
+- **`GetEmailsCursor`** in both Postgres and SQLite stores: replaces `LIMIT 50 OFFSET 50000` with composite cursor `(date_sent, id)` — constant-time regardless of page depth.
+- **`X-Next-Cursor`** response header with `Access-Control-Expose-Headers` in CORS config.
+- **Frontend**: `useEmailsInfinite` uses `pageParam` as cursor string, reads `X-Next-Cursor` from axios response headers.
+- **Backward compatible**: old clients sending `?offset=` continue to work via original `GetEmails`.
+
+#### Instant Unread Counters
+- **Live COUNT queries**: `GetFolders`, `GetUnreadCountByAccount`, `GetUnreadInboxCountByAccount`, `GetUnreadCountByFolder` now use direct `COUNT(*) FROM emails WHERE is_read=false` instead of cached `folders.unread_count` column. Partial index `idx_emails_folder_unread` makes these sub-millisecond.
+- **Atomic read/unread**: `MarkEmailRead`, `BulkMarkEmailsRead`, `BulkMarkEmailsUnread` update `folders.unread_count` atomically via CTE — but the authoritative source is now live COUNT.
+- **`RefreshUnreadCounts` removed from `queue_manager.go`** — no more 30-second background timer wasting CPU on idle counters.
+- **`publishEvent` includes `account_id`** in bulk action messages — cache invalidation now fires correctly for read/unread toggles.
+
+#### Cache Coverage
+- **In-memory cache for Mono edition**: `MemoryCache` with TTL and periodic cleanup. When Redis is unavailable (Mono), 11 GET endpoints use in-memory `cacheGet`/`cacheSet`/`tryCache` helpers — transparently switching between Redis and local memory.
+- **`CheckAccountAccess` caching**: Uses `cache:account:meta:{id}` (30s TTL) to avoid `GetAccount` DB query on every API call. Cuts auth overhead from N+1 to O(1).
+- **`Get`/`Set`/`Ping` timeouts**: `redisOpTimeout=3s` applied to all Redis operations — prevents hung HTTP workers on slow Redis.
+- **`InvalidateEmailCache` uses passed `ctx`** instead of `context.Background()` for proper lifecycle management.
+- **`OnSendTelegram` granular cache**: `cache:account:meta:{id}` replaces full `accounts:list` JSON parse — O(1) lookup instead of O(n) scan.
+- **`publishEvent` `context.Background()` → `ctx`** for Redis invalidation.
+
+#### Database
+- **`MaxConns=100`** default for PostgreSQL pool (`PG_MAX_CONNS` env overrides).
+- **SQLite DSN** includes `_synchronous=NORMAL&_cache_size=-64000&_foreign_keys=ON` for all pool connections.
+
+#### Graceful Shutdown & Stability
+- **Shutdown order**: Asynq `Shutdown()` before `syncMgr.StopAll()` — lets in-flight SMTP/webhook tasks complete.
+- **WebhookPoller only for Mono edition** — prevents double-delivery with Asynq in Unified.
+- **`Asynq.Start(ctx)`** bound to application context instead of `context.Background()`.
+- **Redis Publish with `WithTimeout(1s)`** — prevents goroutine leaks during shutdown.
+
+#### Code Quality
+- **Removed `case "webhook"`** from `StartJobWorker` (dead code — webhooks go through Asynq/Redis ZSET/SQLite poller).
+- **Removed `EnqueueRefreshUnread`** (dead async type — unread counts now live).
+- **`HandleSendEmail` SkipRetry** for cancelled jobs — stops 10x retry spam.
+- **`SendScheduler.Start()`** explicit lifecycle — goroutines start after dependencies are set.
+
+### Critical Fixes — Race Condition, Encryption Rotation, Telegram — 2026-06-14
+
+- **Provider race condition eliminated**: `callAIChatWithTools` and `callAIChat` in `ai_handlers.go` replaced 80 lines of in-place shared-provider mutation with a 6-line shallow copy via `ai.OverrideProviderSettings()`. Concurrent AI requests with different models/keys no longer race.
+- **`OverrideProviderSettings` exported**: `gateway.go` — renamed from `overrideProviderSettings` to exported `OverrideProviderSettings`. Added `*OpenCodeProvider` case.
+- **Encryption key rotation fixed**: `resolveAPIKey` now iterates ALL keys from `ENCRYPTION_KEYS` via new `crypto.GetAllEncryptionKeys()` instead of only the first key. AI settings encrypted with old keys after rotation now decrypt correctly.
+- **Telegram `MemSessionStore` thread-safe**: Added `sync.RWMutex` guarding all map operations — prevents `fatal error: concurrent map writes` crash under concurrent Telegram traffic.
+- **Telegram bot token decryption**: `decryptTelegramToken` in `main.go` tries all domain-derived keys (`telegram_token`) and raw keys before falling back to ciphertext — fixes bot auth failure when token is loaded from DB.
+- **Reject plaintext API key storage**: `UpsertAISettings` now returns HTTP 500 when `ENCRYPTION_KEY` is not configured but API keys are being saved — prevents silent plaintext storage.
+- **`api_keys_encrypted` → `api_keys`**: Renamed JSON field on the wire (frontend ↔ backend). DB column name unchanged.
+- **`AICategorizeEmail` parsing**: Replaced `strings.Split` with `ai.ParseCategories` — properly handles bulleted lists and multi-line AI responses.
+- **Webhook secrets stripped from API response**: `GetWebhooks` no longer returns the `Secret` field to the frontend.
+- **Telegram bot token masked in API response**: `GetTelegramSettings` returns `XXXX...XXXX` instead of the real token.
+- **Postgres error check**: Fixed fragile `err.Error() == "no rows in result set"` → idiomatic `errors.Is(err, pgx.ErrNoRows)` in all 5 locations.
+- **Groq model name**: `mixtral-8x7b` → `mixtral-8x7b-32768` in ProviderModels.
+- **Ollama API key**: `callAIChat` for Ollama now passes `effectiveKey` instead of hardcoded `""`.
+- **Webhook silent drop warning**: `EnqueueWebhook` now logs when Redis is unavailable.
+- **AI settings flash fix**: Server data only overwrites localStorage when values actually differ — eliminates visible flash on page load.
+- **ModelSelector double-refetch**: Removed redundant `refetch()` call during refresh — was causing triple re-render.
+- **AI log card states**: Added loading spinner, error display, and "No AI usage yet" empty state.
+
+### AI, UI & Cache Fixes — 2026-06-14
+
+#### AI — Model Fetching & Key Management
+- **Dynamic model fetching for all 10 providers**: Added `FetchAnthropicModels` (Anthropic API) and `FetchOpenAICompatModels` (OpenCode) to `fetchProviderModels`. All providers now fetch live models from their APIs instead of hardcoded lists. Hardcoded `ProviderModels` updated to current 2026 models for all 10 providers.
+- **Gemini model filter**: `FetchGeminiModels` now filters to only `gemini-*` models, excluding legacy PaLM models (`chat-bison`, `text-bison`, `embedding`, `aqa`).
+- **HTTP status checks**: Added missing HTTP status code validation to `FetchGeminiModels` and `FetchOllamaModels` — previously swallowed API errors silently.
+- **OpenCode fixes**: `ChatWithTools` now uses `BaseURL` instead of hardcoded `api.opencode.com`. `ListModels` was `return nil, nil` — now fetches from provider. ProviderEnvKey added `"opencode"` case. Cloud URL detection (`/zen/go/v1` for opencode.ai, `/v1/models` for local).
+- **Gemini chat format**: `callAPI` and `callAPIWithTools` rewritten to proper Gemini format: `system` → `systemInstruction` (separate field), `assistant` → `model` role mapping. Previously squashed all messages into one text blob.
+- **API key merge (not replace)**: `UpsertAISettings` now merges incoming keys with existing stored keys. Entering one provider's key no longer wipes all other stored keys. Decrypts existing, merges non-empty values, re-encrypts.
+- **Key resolution fixes**: `resolveAPIKey` global fallback no longer requires `ALLOW_GLOBAL_AI_KEYS=true` (now on by default, disabled by `=false`). Removed `setting.Preset == ""` blocker. Proper loop over candidate account IDs.
+- **Multi-key decryption**: `fetchProviderModels` now tries all keys from `ENCRYPTION_KEYS` (comma-separated), not just the first — fixes model fetching after key rotation.
+- **Real error responses**: All AI endpoints (`AIChat`, `summarizeEmail`, `AICategorize`, `AICategorizeEmail`) now return `{"error":"..."}` JSON instead of generic "internal error" — users can see actual API error messages.
+- **Model guard in overrides**: `callAIChat` and `callAIChatWithTools` no longer overwrite provider model with empty string when `apiKey` is present but `model` is empty.
+- **Frontend provider switch**: Changing provider in settings now resets model to empty — prevents sending incompatible models (e.g. `grok-2` to DeepSeek API).
+- **ModelSelector auto-correct**: When loaded models don't include the current value (e.g. stale localStorage), auto-selects first available model. Force-refreshes on mount.
+
+#### Cache & State Consistency
+- **`InvalidateEmailCache` MemCache support**: Removed early `return` when Redis is nil (Mono edition). Now properly invalidates both Redis (Unified) and MemCache (Mono). Added `MemoryCache.Keys()` method for prefix-based invalidation.
+- **Folder cache SCAN**: Changed exact `Del("folders:unified", "folders:")` to `scanAndDel("folders:*")` — correctly clears all account-specific folder caches.
+- **All mutation handlers invalidate cache**: `markEmailRead`, `toggleFlagEmail`, `togglePinEmail`, `toggleMuteEmail`, `snoozeEmail`, `saveDraftReply`, `clearDraftReply`, `moveEmail`, `SetEmailLabels` now call `InvalidateEmailCache` + `publishEvent("email_updated")` with proper `account_id`.
+- **BulkAction cache fix**: When `account_id` is not provided by frontend, explicitly calls `InvalidateEmailCache("")` — was previously silently skipped.
+- **Frontend SSE listener**: Added `email_updated` event handler that invalidates `["email", id]`, `["emails-infinite"]`, and `["folders"]` React Query caches — previously only `new-email` was handled.
+
+#### Email List & Counters
+- **Auto-mark-read timer fix**: Timer was reset on every re-render because `selectedEmail` object reference changed on each refetch. Now uses `useRef` with email ID tracking — timer starts once and fires reliably after configured delay.
+- **Timer `__pending__` guard**: Prevents re-timer after successful mutation while React Query cache hasn't updated yet. Clears when `is_read` actually flips.
+- **Missing `["accounts"]` invalidation in `useMarkEmailRead`**: Auto-mark-read was invalidating `["folders"]` but not `["accounts"]` — sidebar header counter (`accounts.reduce(... a.unread_inbox)`) never updated. Manual button worked because `useBulkEmailAction` did invalidate accounts.
+- **All mutation hooks now invalidate `["folders"]`**: `useFlagEmail`, `usePinEmail`, `useSnoozeEmail` previously only invalidated `["emails-infinite"]` — sidebar folder counters were stale after flag/pin/snooze actions. Added `refetchQueries` for folders to bypass `staleTime`.
+- **Blue `is_dirty_locally` dot removed** from email cards — confusing UX, users don't care about IMAP sync status.
+- **`useUsers` disabled for non-Teams editions**: Prevents 404 spam on `/api/users` in Unified and Mono editions.
+- **Comments endpoint available on all editions**: Moved out of `IsTeams()` block — works on U, M, T.
+
+#### Frontend Cleanup
+- **Removed SSE debug logs** (`[SSE] connecting`, `[SSE] connected`, `[SSE] event source error`) from `useEmails.ts`.
+- **Save toast fix**: Toast "Saved" was shown unconditionally even on server error. Now shows error toast on failure.
+- **`hasSavedKey` preservation**: Flag no longer cleared when saving without re-entered keys after page reload.
+
 
 ## [3.0.4] — 2026-06-12
 
@@ -30,7 +336,7 @@ The IMAP `\Seen` flag was completely ignored in both directions. Emails were alw
 
 #### UI Freezes during License Validation & Ping
 - **License Check (`isLicensed`)**: completely rewritten to be non-blocking. It now unconditionally returns the cached value immediately and fetches the live DB status asynchronously in the background. Fail-open on initial boot ensures zero block on the first request.
-- **License Ping**: The HTTP API handler for saving the license key now triggers the background ping asynchronously (`goroutine`) and unconditionally returns `{"status": "ok"}` to the frontend immediately. This prevents the UI from freezing if the RMS license server is unreachable.
+- **License Ping**: The HTTP API handler for saving the license key now triggers the background ping asynchronously (`goroutine`) and unconditionally returns `{"status": "ok"}` to the frontend immediately. This prevents the UI from freezing if the license server is unreachable.
 
 #### Database Pool Exhaustion & Silent Account Lockouts
 Concurrent background index builds (`CREATE INDEX CONCURRENTLY` across 64 partitions) saturated disk I/O and exhausted the PostgreSQL connection pool. This caused unrelated API queries—specifically `isLicensed` and `GetUnreadCount`—to timeout.
@@ -121,9 +427,6 @@ Create Group button had no disabled/loading state during async submission. Multi
 After `BulkMoveByFilter` moved emails to trash/archive, `GetEmailIDsByFilter(sourceFolderID)` returned empty — no IMAP enqueue was performed. Emails were moved in DB but IMAP server was never notified.
 
 - **Fixed**: fetch email IDs BEFORE the move, then enqueue IMAP after. Non-unified path was already correct.
-
-#### `shiftPGPlaceholders` — Parameter Corruption
-String replacement loop (`$10 → $11`, then `$1 → $2`) caused double-replacement: `$10` shifted by 1 became `$21` instead of `$11`. Currently safe (only `$1`/`$2` used) but would silently corrupt queries if more parameters were added.
 
 - **Fixed**: intermediate marker pattern (`$10 → __PGH__11__ → $11`) — replacement-safe regardless of parameter count.
 
@@ -332,7 +635,6 @@ Endpoints that operate on shared infrastructure now require admin privileges via
 - **`requireAdmin()`**: reusable admin privilege check in handler methods
 - **Singular Store getters**: `GetLabel`, `GetTemplate`, `GetRule`, `GetComment`, `GetContact`, `GetMCPKey`
 - **Redis**: `ZClaim` (visibility timeout pattern), `ZMember` struct, AOF persistence + healthcheck
-- **Build script**: `bp-t.sh` for Teams edition Docker build+push
 - **Node 26**: `.nvmrc` + `engines.node >= 26` + `--no-deprecation` flag
 - **Dependencies**: Node 26.3.0, Redis 8-alpine, Alpine 3.22, Go 1.26.3
 - **Bulk-by-Filter**: `POST /api/emails/bulk` filter-based mode — when `ids` is empty and `account_id` is present, operations use direct SQL `UPDATE` (no 250K-element JSON array). Removes the 10K `LIMIT` bottleneck on "Select All" + Delete/Archive/Read/Flag for 200K+ inboxes. Includes `/api/emails/count` lightweight endpoint, `GetAccountIDsByFilter` for unified per-account grouping, chunked IMAP enqueue (500/batch)
@@ -364,8 +666,7 @@ Endpoints that operate on shared infrastructure now require admin privileges via
 - **FIX**: Token save failure now redirects with `?oauth=error&error=Token save failed`. Worker detects fatal errors (`no refresh token`, `account not found`) and stops retrying.
 
 #### docker-compose — Production Port Mapping
-- **HIGH**: `PORT=${UI_PORT:-3000}` passed host port to container's Next.js. Container listened on 3751, Docker mapped 3751→3000. `Connection reset by peer`.
-- **FIX**: `PORT=3000` (hardcoded internal), `HOST=0.0.0.0`. Added `LOG_LEVEL=info` for sync diagnostics. `DATABASE_URL`/`REDIS_URL` auto-constructed from POSTGRES_* vars.
+- **FIX**: Fixed port mapping and network binding environment variables in production docker-compose configurations и Fixed positional parameter generation edge case in PostgreSQL query builder.
 
 #### Dockerfile — UID Mismatch
 - **HIGH**: `adduser -S appuser` (no `-u` flag) → Alpine assigned UID 100. Host storage owned by UID 1000. `mkdir /app/storage/emails: permission denied`.
@@ -423,7 +724,6 @@ Endpoints that operate on shared infrastructure now require admin privileges via
 - Sync error cleared on successful reconnect
 
 ### Bug Fixes
-- `support@geotax.biz` IMAP host fixed (`geotax.biz` → `mail.geotax.biz`, TLS certificate match)
 - Locked group click blocked in `group-manager.tsx` (was expandable despite `is_locked`)
 - ESLint: 0 errors, 0 warnings (fixed `set-state-in-effect`, `static-components`, `immutability`, `no-explicit-any`)
 
@@ -434,7 +734,6 @@ Endpoints that operate on shared infrastructure now require admin privileges via
 - Context-based modal via `usePremiumUpsell` hook + `PremiumUpsellProvider` — no prop drilling, single render point
 - Triggered from: Free badge click, locked group click, disabled Add Account/Add Group buttons
 - Features promoted: Unlimited accounts, Unlimited groups, Priority support, Remove all limits, Commercial use license
-- Links to `https://license.rms-ds.com` for license purchase
 - Only shown in U-version, gated on `!isLicensed`
 - 44 languages translated
 

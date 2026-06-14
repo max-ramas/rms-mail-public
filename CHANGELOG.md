@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.5] — 2026-06-13
+## [3.0.5] — 2026-06-14
 
 ### Stability & Concurrency Improvements
 - **IMAP Streaming (OOM Fix)**: Removed massive memory allocations (`msg.Collect()`) during email synchronization. Implemented true `io.Reader` streaming that writes raw IMAP streams directly to a local `.eml` temporary file. This ensures `O(1)` memory consumption per folder regardless of email and attachment sizes.
@@ -307,6 +307,16 @@ Separate `SELECT COUNT(*)` per agent row instead of aggregating in the main quer
 - **Save toast fix**: Toast "Saved" was shown unconditionally even on server error. Now shows error toast on failure.
 - **`hasSavedKey` preservation**: Flag no longer cleared when saving without re-entered keys after page reload.
 
+### Sync Death Loop and Resync Fixes — 2026-06-14
+
+- Inactivity restart killed consumer loop: heartbeat added
+- WakeUpAccount force-restarted all workers: direct mgrWakeUp channel
+- Per-host semaphore at dial not close: releaseSem func, perHostCap 10 to 5
+- go-imap v2 type-assertion pointer vs value: removed * from FetchItemData types
+- Resync race old worker wrote last_sync_uid after reset: atomic ResyncAccount + ctx.Done guard
+- TriggerRefresh 30s cooldown dropped resyncs: removed cooldown
+- ClaimsKey not set in SSE context: events silently dropped, fixed
+- SSE 2s debounce blocked cache invalidation: immediate refetchQueries
 
 ## [3.0.4] — 2026-06-12
 

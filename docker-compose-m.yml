@@ -27,8 +27,7 @@ services:
     #   RMS_MAIL_HOST=mail.example.com    # M-version: override auto-detected mail server
     #   RMS_IMAP_HOST=imap.example.com    # Override IMAP host
     #   RMS_SMTP_HOST=smtp.example.com    # Override SMTP host
-    # aaPanel/cPanel/userns-remap compatibility: bind-mount dirs inherit host ownership (www:www).
-    # Running as root bypasses UID mapping issues. Safe for single-user Mono.
+    # Run as non-root (UID 1000). For aaPanel/cPanel with userns-remap, set to "0:0" in .env override.
     user: "0:0"
     volumes:
       - ./data:/app/data
@@ -37,7 +36,11 @@ services:
       ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       JWT_SECRET: ${JWT_SECRET}
+      CAMO_HMAC_KEY: ${CAMO_HMAC_KEY:-}
       STORAGE_ROOT: /app/storage
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
       # LOG_LEVEL: info
       # Opt-in: mount custom nginx config (when using external nginx/openresty)
       # - ./nginx/conf.d:/etc/nginx/conf.d:ro

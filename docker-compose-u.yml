@@ -2,7 +2,7 @@
 # RMS Mail — Unified Edition (Multi-Account, PostgreSQL + Redis)
 # =============================================================================
 # Usage:
-#   cp .env.dist .env
+#   cp .env-u.example .env
 #   nano .env  — fill in REQUIRED values
 #   docker compose up -d
 # =============================================================================
@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
     networks:
       - rms-mail
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     volumes:
       - ./redisdata:/data
     healthcheck:
@@ -61,9 +61,11 @@ services:
       - rms-mail
     ports:
       - "${PORT:-8080}:8080"
+    # Run as root to avoid host permission issues with bind-mounted volumes
+    user: "0:0"
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-rmsmail}:${POSTGRES_PASSWORD}@rms-mail-pg:5432/${POSTGRES_DB:-rms-mail}?sslmode=prefer
-      REDIS_URL: rms-mail-redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD}@rms-mail-redis:6379
       ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       JWT_SECRET: ${JWT_SECRET}

@@ -1,5 +1,404 @@
 # Changelog
 
+## [3.0.6] — 2026-06-18
+
+### Performance & Correctness Sprint — 2026-06-16
+
+**Sync Pipeline (S2-S3):** Initial sync now fetches full email bodies in a single streaming IMAP pass, eliminating the sync_queue round-trip. Emails ≤1 MiB parsed directly in RAM via `io.LimitReader` (~95% skip disk I/O). Checkpoint every 50 emails for crash recovery.
+
+**Database (D1-D5):** Postgres `SearchFTS` un-stubbed — was no-op, now real GIN `ts_rank` search. `SaveEmail`/`SaveEmailToFolder` skip `to_tsvector()` when no FTS columns changed. OFFSET pagination killed — keyset cursor now default. SQLite `mmap_size=256MB`. `MarkEmailRead` atomically decrements `unread_count`.
+
+**Frontend (F1-F6):** SSE `onopen` refetches on reconnect — no 2-min stale data after sleep. SSE reconnects after 30s instead of permanent close. `fetchingRef` 30s timeout guard against deadlock. Iframe `key={emailId}` for DOM reuse. Virtualizer `measureElement` for accurate scroll. Dead `useSyncExternalStore` removed.
+
+**Hotkey Architecture:** Singleton `HotkeyManager` with capture phase — single `window.keydown` for app lifetime, no listeners lost on re-render. `Shift+U` fixed (was dispatching `deselect` instead of `mark-unread`). M edition `go-inbox` navigates to actual account. `Cmd+A`/`Ctrl+A` in `PREVENT_DEFAULT_KEYS`, bridged via `mail:select-all` command.
+
+**Bulk Operations:** SQLite `BulkMarkEmailsRead`/`Unread` rewritten without `RETURNING`-in-CTE (PostgreSQL-only syntax was never working). Three-phase approach: count → update emails → update folder counters. `BulkAction` sends single `emails_bulk_updated` SSE event instead of N per-ID events.
+
+**Sync & Rate Limiter:** Global rate limiter removed (kept only on `/api/auth/login`). Broken per-account UIDValidity check removed (was per-folder in IMAP). `folderID` fallback `CreateFolder` ensures `lastUID` always saved. `OnNewEmail`/`BroadcastEvent`/Telegram gated on `isNew` — no notification spam during re-sync. Double SSE event eliminated. Callbacks now accept `ctx context.Context`.
+
+**Housekeeping:** `defer cmd.Close()` in `processTasks`. `time.After` → `time.NewTimer` + `defer Stop()` in retry loops. `defer cancel()` on `context.WithTimeout`. JSON marshal + rule action errors logged. Webhook semaphore gate. Avatar worker pool (10 concurrent). Jitter universal. `EmailFilterOpts` → `models`. Schema: `idx_emails_thread` + labels/contacts FK in SQLite, GIN `idx_emails_fts` uncommented. Optimistic updates for delete/move/mute/snooze. `invalidateQueries` scoped (no bare calls). `refetchInterval` 30s→120s. HTML composer code-view toggle. Debounce timer cleanup.
+
+**Risk Zone Hardening:** `WakeUpAccount` now sleeps random 0-30s jitter to prevent thundering herd on multi-account restart. `RunBackgroundOptimizations` runs `VACUUM ANALYZE emails` after partition index builds to prevent GIN bloat. SSE handler audited — no large-object closure captures, no memory leak risk. CAS storage architecture verified ready for S3 backend swap.
+
+### Extreme Performance Scaling & Architecture (Phase 2)
+- **Inbox Indexing Reform**: Replaced expensive `LOWER(f.name) = 'inbox'` operations with an indexed `is_inbox` boolean flag in the `folders` table, completely eliminating full table scans across huge accounts for Unified Inbox.
+- **Denormalized Unread Counts**: Moved `unread_count` computation away from on-the-fly `COUNT(*)` over the massive `emails` table into a denormalized counter directly on the `folders` table, reducing Dashboard latency to <1ms.
+- **Massive Bulk SQL Operations**: Refactored `SetEmailLabels`, `SetGroupAccounts`, `enqueueUIDsFallback`, and `RekeyAll` to use batched operations (`INSERT ... VALUES` in SQLite, `UPDATE ... FROM unnest` and `pgx.Batch` in PostgreSQL). This completely eliminates N+1 query patterns, condensing hundreds of sequential transactions into single atomic operations.
+- **OOM Memory Protection Limits**: Enforced hard safety bounds (`LIMIT 10000`) on previously unbounded memory-heavy queries like `GetEmailIDsByFilter`, `GetAllAttachments`, and `GetActiveFilePaths`. This prevents the server from crashing due to Out Of Memory exceptions on massive 100k+ IMAP accounts.
+- **Unified Inbox Parameter Fix**: Resolved a critical SQLite & PostgreSQL positional argument mismatch bug where fetching emails from the unified "INBOX" caused database constraint errors or misaligned pagination.
+
+### Performance & UI Polish
+- **Account & Folder Loading Acceleration**: Eliminated the `O(N)` nested queries bottleneck in the `/api/emails` endpoint. Replaced the `GetFolders()` database fetch per email with an `O(1)` cached lookup inside `Fetcher.GetOrCreateFolder()`, and optimized the SQL unread/muted counts calculation via a direct `LEFT JOIN`. The accounts page and folder list now load instantly, even during massive background syncs.
+- **Sync Pool Expansion**: Tripled the background `syncPool` capacity from 5 to 20 concurrent connections to aggressively process initial IMAP downloads without blocking. Also introduced `PG_SYNC_MAX_CONNS` as an environment variable override for custom environments.
+- **Automated Query Planner Statistics**: Appended `ANALYZE emails;` directly into the database migrations (PostgreSQL and SQLite) right after the new indices (`is_read`, `is_muted`) are created. The database query planner instantly starts using the new indices without requiring manual DB administration.
+- **Collapsible UI Filters**: Reworked the email list filter row to be collapsible by default, significantly saving vertical screen space. Filter chips smoothly expand to show text, while hiding into clean icon-only indicators with smart badges when collapsed.
+- **Pixel-Perfect Alignment**: Reduced the filter chips' visual footprint (smaller height and padding) and fixed flexbox wrapping inconsistencies. Precision-aligned the "Select All" checkbox grid with individual email row checkboxes for a flawless, uniform look.
+- **Global Localization Synecdoche**: Added missing `expand_filters` and `collapse_filters` translation strings for English and Russian, utilizing the custom `fill-translations.js` script to auto-fill these new keys into all 45 supported languages dynamically.
+
+### Security
+- **SSRF & Open Relay Protection (Mono Edition)**: Implemented strict DNS resolution and validation in `ValidateManualConfig` when `APP_ENV=production`. The Mono edition backend now actively rejects non-private IP addresses (must be RFC 1918, loopback, or link-local) for custom IMAP/SMTP configurations, closing a potential open-relay vulnerability vector.
+
+### UX & Performance
+- **Optimistic UI Updates**: Re-engineered React Query mutations for all email state changes (Mark as Read, Unread, Flag, Pin) and Bulk Actions to execute instant "Optimistic Updates". 
+- **Timer Freeze Fix**: Addressed an issue where auto-read timers and click events appeared to "hang" or freeze the interface. By synchronously mutating the local cache (including nested account/folder unread counters) and gracefully rolling back on `onError`, the UI now reacts with zero latency, entirely hiding slow IMAP server network round-trips from the end user.
+- **Enterprise Printing (B2B)**: Implemented isolated iframe-based printing triggered via `Cmd+P` (or `Ctrl+P`). It intercepts the browser's default print dialog, automatically cleans up dark mode styles and unnecessary UI elements, and renders the entire email thread into a clean, print-optimized document. Added a dedicated `actions` category to the Command Palette for print and other contextual actions.
+
+### AI Categorization — Configurable Taxonomy & Rules Engine
+- **Dynamic category taxonomy**: Replaced hardcoded category lists in all 10 AI providers with a dynamic `ai_categories` JSON config stored in `system_settings`. Admins can add, rename, or remove categories via Settings UI without touching code.
+- **API**: `GET/PUT /api/system/ai-categories` — read/write the taxonomy (admin-only).
+- **Provider integration**: Added `categories []string` parameter to `Categorize()` interface. `buildCategoriesPrompt()` generates the system prompt dynamically from the config.
+- **Rules Engine — Auto-Read & Auto-Move**: After AI categorization saves tags, `applyCategoryRules` checks each tag against the taxonomy. Matching rules auto-mark as read (`auto_read`) and/or move to a configured folder (`move_to`). Uses existing `MoveEmail`/`MarkEmailRead` store methods — no new IMAP operations.
+- **Race condition guard**: `applyCategoryRules` skips emails where `IsDirtyLocally` is true (user manually moved/tagged the email).
+- **Tag filter API**: `GET /api/emails?tag=Invoice` — filters email list by AI tag via `WHERE EXISTS (SELECT 1 FROM email_tags WHERE email_id = e.id AND tag = $N)`. Works on both PostgreSQL and SQLite.
+- **Database**: Migration `016_ai_categories.sql` — default taxonomy seed + covering indexes `idx_email_tags_email_tag` and `idx_email_tags_tag_email`.
+
+### UI — AI Categories Settings & Tag Filter
+- **Settings tab**: `AICategoriesTab` in Settings page — table with category name (16 presets + custom), color picker, auto-move folder selector (per-account), auto-read toggle. Edits saved via `PUT /api/system/ai-categories`.
+- **Tag filter chips**: AI category chips in the email list filter bar. Click toggles `?tag=Invoice` filter. Color-coded per category from the taxonomy config.
+- **i18n**: 16 new translation keys added to all 45 locales. Russian manually, 43 locales machine-translated via MyMemory API. 100% coverage.
+
+### IMAP Edge Case Fixes — UIDVALIDITY & Expunge
+- **UIDVALIDITY detection for ALL folders** (not just INBOX): `syncFolderByUID` now checks server-side UIDVALIDITY changes on every folder. Previously only INBOX was protected — `Sent`, `Trash`, and custom folders were vulnerable to silent data loss after server-side migrations or mailbox rebuilds.
+- **`ClearFolderQueue` on UIDVALIDITY change**: When a folder's UIDVALIDITY mismatch is detected, old queue entries for that folder are purged. Prevents completed tasks from previous UIDVALIDITY universes from blocking new emails with numerically coincident UIDs.
+- **Removed `estimatedStart` heuristic**: The `UIDNext - NumMessages` optimization could permanently miss emails with non-sequential UIDs (gappy mailboxes). Replaced with exhaustive `UID Fetch 1..UIDNext-1` in full sync mode — slightly slower but guaranteed complete.
+- **Empty body → `FailSyncTask` with retry**: Messages where IMAP returns a valid UID but empty body are now marked as `failed` (retryable) instead of `completed` (permanently skipped). Prevents silent data loss from intermittent network/server issues during fetch.
+
+### Performance — Database Query Optimization
+- **Partition pruning**: Added `AND account_id = $N` to 8 single-email queries (`GetEmail`, `MarkEmailRead`, `MoveEmail`, `ToggleFlag`, `TogglePin`, `ToggleMute`, `DeleteEmail`, `UpdateEmailHasAttachments`). PostgreSQL hash-partitioned table now does 1 index probe instead of 64.
+- **Attachments indexes**: `idx_attachments_hash` + `idx_attachments_email_id` — CAS dedup now uses index lookup instead of full table scan. Email detail views no longer sequential-scan the attachments table.
+- **`GetFolders` — cached `unread_count`**: Replaced live `COUNT(*) FROM emails WHERE folder_id = f.id` correlated subquery with direct read of `folders.unread_count` column (updated by periodic `RefreshUnreadCounts` CTE).
+- **`GetAccounts` — omit encrypted blobs**: Removed `password_encrypted`, `oauth_access_token`, `oauth_refresh_token` from the SELECT list (were zeroed in Go anyway). Saves megabytes of I/O per page load.
+- **`name_lower` generated column + index**: Migration 020 — added `folders.name_lower TEXT` with index on `(account_id, name_lower)`. Replaced 20+ `LOWER(f.name)` occurrences across all query paths — every `GetEmails` variant, `GetEmailsCursor`, `GetFolderByName`, `buildPGWhere`. Eliminated sequential scans on the folders table.
+- **Removed `accounts` JOIN in GetEmails/GetEmailsCursor**: The JOIN was solely for `a.smart_categories` — redundant since `e.smart_category` is already set per-email. All 4 query paths simplified.
+- **`GetFolderByName`**: Lightweight single-folder lookup replacing heavy `GetFolders` calls in `deleteEmail`, `moveEmail`, `RestoreFromTrash`, `BulkAction` (6 call sites).
+- **`GetUnreadCountByFolder` → cached**: Now reads `folders.unread_count` instead of scanning `emails`.
+- **`RefreshUnreadCounts` SQLite**: Replaced correlated subquery UPDATE with efficient FROM-clause hash-join.
+- **`IndexEmailFTS`**: Removed redundant subquery — `accountID` passed directly from caller.
+- **Batch operations**: `CompleteSyncTasks` (single `WHERE id = ANY($1)` instead of loop), `AddEmailTags` (single `unnest` INSERT instead of per-tag loop), `BulkAction` fallbacks use `BulkDeleteEmails` instead of per-email `DeleteEmail`.
+- **Safety LIMITs**: Added to `GetEmailIDsByFilter` (10000), `GetSnoozedEmails` (1000), `GetAllAttachments` (10000), `GetActiveFilePaths` (10000), `GetEmails`/`GetEmailsCursor` no-filter branches (100).
+
+### Fixed — Bugs
+- **`GetEmailsCursor` SQL syntax error**: Missing `$1` placeholder after `account_id =` in the cursor-based pagination path — would crash at runtime.
+- **`FailSyncTask` wasteful RETURNING**: Removed `RETURNING account_id, folder_name, uid, attempts` from hot-path UPDATE (99.9% of calls ignore the returned values).
+
+### Audit & Hardening Sprint — 2026-06-16
+
+**Critical Fixes (P0):**
+- **zstd pool panic**: Replaced unsafe type assertion with comma-ok pattern (`val := pool.Get(); encoder, ok := val.(*zstd.Encoder); if !ok || encoder == nil`) plus nil check — prevents panic when pool had not been initialized.
+- **I/O error handling**: `io.ReadAll` errors in `ProcessMessage` and `ProcessMessageStreamToFolder` now properly returned instead of silently ignored — prevents silent data loss on disk/network errors.
+- **Encrypted file permissions**: `os.WriteFile` mode changed from `0644` to `0600` for encrypted EML files (both code paths) — prevents world-readable email bodies on disk.
+- **`os.MkdirAll` error checks**: Both calls now validate return value — prevents silent failure on disk-full or permission-denied errors.
+- **SSE `EventBus` double-close protection**: Added `sync.Once` per subscriber channel — prevents panic when `Unsubscribe` is called twice or races with concurrent `Publish`. Covered by 5 new tests with `-race`.
+
+**Backend Refactoring (P1):**
+- **Unified Manager constructor**: Merged `NewManager` and `NewManagerWithAI` into single `NewManager(store, cas, ...ManagerOption)` with `WithAIGateway` functional option. `maxWorkers` extracted to `const defaultMaxWorkers = 50`.
+- **`WakeUpAccount` non-blocking**: Replaced `time.Sleep(jitter)` with `time.AfterFunc` — caller goroutine no longer blocked for 0–30 seconds.
+- **Structured logging**: Replaced all `slog.Info(fmt.Sprintf(...))` with proper key-value pairs across 10 backend files (`fetcher`, `manager`, `worker`, `checker`, `account_handlers`, `email_handlers`, `ai_handlers`, `sse`, `main`, `main_helpers`).
+- **Git hygiene**: `backend.log` already excluded via `.gitignore` (`*.log`). Verified clean.
+
+**Security (P1):**
+- **SSE auth cleanup**: Removed legacy `api_key` query parameter check from browser SSE handler — MCP uses separate `MCPSSE` handler with its own auth.
+- **Typed context keys**: Replaced `contextKey string` with `contextKey struct{name string}` — prevents key collisions between packages at compile time.
+- **AI API Keys audit**: Verified already encrypted via `crypto.Encrypt` → `api_keys_encrypted` column before storage. No changes needed.
+- **Telegram webhook URL validation**: Added `sync.ValidateWebhookURL(publicURL)` gate before `SetWebhook` — prevents SSRF via malicious `PUBLIC_URL` environment variable.
+
+**Frontend Refactoring (P1):**
+- **`email-list.tsx`** (1352 → 524 lines): Split into `EmailRow.tsx`, `EmailFilters.tsx`, `EmailToolbar.tsx`, `VirtualEmailList.tsx`, `useEmailSelection.ts`. All components receive props instead of closure-captured variables.
+- **`useEmailMutations.ts`** (976 lines → barrel re-exports): Split into 13 focused hooks (`useMarkRead`, `useFlagEmail`, `usePinEmail`, `useMuteEmail`, `useSnoozeEmail`, `useMoveEmail`, `useDeleteEmail`, `useSendEmail`, `useSaveDraft`, `useBulkAction`, `useEmailAI`, `useAssignEmail`, `useFolderMutations`) + shared `types.ts`.
+- **`HotkeyManager` lifecycle**: Added `dispose()` method for explicit cleanup. Reverted `WeakRef`/`cleanupStale()` experiment — `deref()` non-determinism caused intermittent hotkey failures. Back to strong references with proper `useEffect` cleanup.
+- **`QueryClient`**: Verified correct singleton pattern via `useState(() => new QueryClient(...))` — no cleanup needed, no regression risk.
+- **ChunkLoadError handling**: Added comment documenting graceful reload strategy.
+
+**Performance (P2):**
+- **Virtualizer `measureElement`**: Documented that it only measures ~15-20 visible rows — cost already bounded by virtual scrolling.
+- **framer-motion drag**: Preserved for swipe gestures (core UX); virtual scrolling limits rendered instances to viewport.
+- **Theme inline script**: Hardcoded — acceptable risk, documented.
+
+**Database (P2):**
+- **`name_lower` → GENERATED column**: Migration `021_folders_name_lower_generated.sql` — conditional `DO $$` block converts existing `name_lower TEXT` to `GENERATED ALWAYS AS (LOWER(name)) STORED`. Schema updated for fresh installs. Includes zero-downtime rename strategy for large tables.
+- **ON DELETE CASCADE + 64 partitions**: Documented — PostgreSQL handles cascade across partitions. Async cleanup worker considered for future if performance degrades on mass deletes.
+
+**Infrastructure (P3):**
+- **Alpine**: `3.20` → `3.21`
+- **Go**: `1.26.3` → `1.26.4`
+- **Next.js**: `16.2.7` → `16.2.9`
+- **Dependencies**: 11 Go packages upgraded (`pgx v5.9.2→v5.10.0`, `go-redis v9.19.0→v9.20.1`, `protobuf v1.36.10→v1.36.11`, `websocket v1.8.12→v1.8.15`, `gorilla/mux v1.8.0→v1.8.1`, etc.)
+- **Docker HEALTHCHECK**: `wget --spider http://localhost:8080/api/health` every 30s with 5s timeout, 3 retries.
+- **Nginx**: Extracted `upstream backend { server 127.0.0.1:8087; }` to deduplicate `/api/` and `/mcp/` `proxy_pass` blocks.
+
+**Tests (P3):**
+- **`EventBus` test suite** (`sse_test.go`): 5 tests — subscribe/publish/unsubscribe lifecycle, double-unsubscribe no-panic, publish to nonexistent channel, multiple subscribers broadcast, unsubscribe-during-publish race condition (100 subscribers × 50 publishers, `-race` clean).
+
+### SSE Ticket System (PR-9) — 2026-06-16
+
+- **Ticket Store rewrite**: Replaced `uuid.New()` with `crypto/rand` 32-byte hex tokens. `TicketData{UserID, AccountID, ExpiresAt}` with `sync.RWMutex`. Burn-after-reading: ticket deleted on first `ValidateTicket` call. 30s TTL, background cleanup every 30s.
+- **Frontend `TicketManager`**: Singleton with `fetch()` deduplication via shared Promise. Falls back to cookie-only auth on network errors. Uses `credentials: "include"` for httpOnly cookie.
+- **Frontend `useSSETicket` hook**: Manages full EventSource lifecycle — ticket prefetch → connect with `?ticket=` → exponential backoff reconnect (2s-30s, max 8 retries) → fresh ticket each reconnect. Uses `eventsKey` string instead of `...events` array in effect deps to prevent render loops.
+- **`useEmails.ts`**: Replaced manual 200-line `EventSource` with `useSSETicket`. Consolidated 4 event handlers into single `handleSSE` callback. Mutable state moved to `useRef` for stable references across reconnects.
+
+### Production Hardening — 2026-06-16
+
+**SQLite TEXT to time.Time scan fixes (Mono edition):**
+- **`GetEmailsCursor`**: `date_sent` scanned directly into `time.Time` — fixed to `sql.NullString` + `parseTime()`. Matched existing pattern from `GetEmails`, `GetEmail`, `GetEmailsByAccounts`, `GetEmailsByIDs`, `SearchEmails`.
+- **`GetSnoozedEmails`**: `snooze_until` scanned directly into `*time.Time` — fixed to `sql.NullString` + `parseTime()`.
+- **`GetAISettings`**: `created_at`/`updated_at` scanned directly into `time.Time` — fixed to `sql.NullString` + `parseTime()`.
+- **`InitSchema` defensive columns**: Added `addColumnIfMissing` for `emails.cc_address`, `status`, `first_response_at`, `resolved_at`, `smart_category` — prevents "no such column" when ALTER TABLE in schema_mono.sql fails silently.
+- **`smart_category` NULL fix**: SQLite ALTER TABLE ADD COLUMN sets NULL for existing rows. Added `UPDATE emails SET smart_category = 0 WHERE smart_category IS NULL` to both schema_mono.sql migration and InitSchema runtime fix. Query filter changed to `(smart_category = 0 OR smart_category IS NULL)`.
+
+**CORS and CSP production hardening:**
+- **CORS**: Added `http://localhost:3500` and `http://127.0.0.1:3500` to dev CORS allowlist (frontend dev server on port 3500).
+- **CSP**: `connect-src` now uses `'self'` only in production; dev-only `localhost:8087` and `ws://localhost:3500` excluded from production CSP header.
+- **Camo HMAC**: `InitCamoKey()` now called unconditionally (removed `!edition.IsMono()` guard) — fixes 403 Forbidden on avatar images in Mono edition.
+
+**Docker compose fixes:**
+- **All M and U compose files**: `user: "0:0"` (root) — fixes `SQLITE_READONLY (error code 8)` caused by host directory permissions mismatch (aaPanel/cPanel `www` owner vs container uid 1000). Safe for single-user Mono; U only uses bind-mount for attachment storage.
+
+**Logging and observability:**
+- **Default log level**: `slog.LevelWarn` changed to `slog.LevelInfo` — ensures all Info-level messages are visible by default.
+- **`markEmailRead` error logging**: Added `slog.Error` on every failure step (tx begin, query, update, folder update). Handler now returns 404 when `GetEmail` fails to resolve `accountID`.
+- **`GetEmails` handler**: 500 response body now includes the actual error message for client-side debugging via Network tab.
+
+**Race condition tests:**
+- All 10 test packages pass with `-race` flag — zero data races detected.
+
+### Retry & Backoff Hardening — 2026-06-17
+
+**Thundering herd prevention:**
+- **Reconnect jitter**: `sync()` reconnect loop now uses `CalculateReconnectDelay` with ±15% jitter — prevents all workers from hitting the server simultaneously after an outage. Replaced fixed `reconnectDelay*2` with exponential backoff + random spread.
+- **CheckWorker backoff**: Replaced fixed `time.Sleep(15s)` retry with exponential backoff (`15s × 2^(n-1)` + 30% jitter, capped at 5 min). Prevents CheckWorkers from DDoS-ing the IMAP server after connection failures.
+- **Timing parameters**: `DefaultTiming`: `ReconnectRetries` 5→10, `ReconnectBase` 10s→15s, `ErrorBackoffBase` 30s→60s, `ReconnectMaxWait` 160s→300s. `MonoTiming`: `ReconnectRetries` 3→6, `ReconnectBase` 3s→10s, `ErrorBackoffBase` 10s→30s.
+- **`CalculateReconnectDelay`**: New function in `timing.go` — `base × 2^attempt + random(-15%, +15%)`, capped at 5 min. Shared across `sync()` reconnect loop.
+
+**Pause/Resume sync (Google rate-limit recovery):**
+- **Backend**: `IsPaused` callback on Manager via cache layer (`account:sync_paused:{id}`, TTL 24h). Guards in `WakeUpAccount`, `refreshWorkers`, `bootstrapMissingWorkers`. `POST /api/accounts/{id}/pause-sync` stops both SyncWorker and CheckWorker. `POST /api/accounts/{id}/resume-sync` triggers `TriggerRefresh`. Auto-resume after 24h TTL expiry.
+- **Frontend**: Single toggle button (Pause ⏸ / Play ▶) in Settings → Accounts, next to Resync. Amber highlight when paused. `is_sync_paused` injected into account response via cache lookup.
+- **i18n**: 4 new keys (`pause_sync`, `pause_sync_done`, `resume_sync`, `resume_sync_done`) in all 45 locales. Machine-translated via MyMemory API for 43 locales.
+
+**Production bug fixes:**
+- **Unified inbox folders**: `getFolderName` returned undefined for real folder IDs — now looks up folder name from fetched data.
+- **`name_lower` NULL fix**: Added `DO $$ BEGIN UPDATE folders SET name_lower = LOWER(name) WHERE name_lower IS NULL` to `schema.sql`. Existing installations had NULL `name_lower`, causing `name_lower = LOWER(...)` to return no results — empty group inboxes.
+- **Docker compose**: `user: "0:0"` in all M/U compose files — fixes `SQLITE_READONLY (error 8)` on aaPanel/cPanel hosts.
+
+**Frontend lint fixes:**
+- **React Compiler**: Fixed 16 `react-hooks/preserve-manual-memoization` errors in `page.tsx` — added state setters to `useCallback`/`useMemo` dependency arrays.
+
+### Production Hotfixes — 2026-06-17
+
+**Redis connection fix (Unified edition):**
+- **Root cause**: `strings.TrimPrefix(redisAddr, "redis://")` on `redis://:password@host:6379` left `:password@host:6379` — the leading colon from empty username caused `too many colons in address` error in `go-redis`/`asynq`. Additionally, password was never passed to Redis client — would fail with `NOAUTH` even after address fix.
+- **Fix**: Added `parseRedisURL()` helper that correctly extracts `host:port` and `password` from `redis://` URLs. `cache.NewClient(addr, password)` now passes password via `redis.Options.Password`. `async.NewTaskClient` and `async.NewTaskServer` also receive password for `asynq.RedisClientOpt.Password`. All 3 constructors + test updated.
+
+**Delete email 500 on PostgreSQL (pgx.ErrNoRows):**
+- **Root cause**: `deleteEmail` handler checked `err != sql.ErrNoRows` but PostgreSQL via pgx returns `pgx.ErrNoRows` — a different error value. The guard never matched, so missing Trash folder always returned 500 instead of auto-creating it.
+- **Fix**: Changed to `!errors.Is(err, sql.ErrNoRows)` — matches both `sql.ErrNoRows` (SQLite) and `pgx.ErrNoRows` (PostgreSQL).
+
+**Partition indexes survived `DO $$` cleanup (PostgreSQL):**
+- **Root cause**: `DO $$` block in `schema.sql` used POSIX regex `\d` to find orphaned partition indexes. PostgreSQL POSIX regex doesn't recognize `\d` as digit class — requires `[0-9]`. All 64 `emails_pXX_msg_id_account_id_idx` indexes survived silently.
+- **Fix**: Changed regex to `'^emails_p[0-9]+_msg_id_account_id_idx$'`. Also added step to clean up any indexes still alive after parent constraint drop.
+
+**Migrations embedded in binary (`go:embed`):**
+- **Root cause**: Migration `.sql` files needed separate `COPY` in Dockerfile — repeatedly forgotten, leading to `RunMigrations` returning 0 migrations applied.
+- **Fix**: Moved migrations to `internal/migrations/` with `//go:embed` directive. All 22 `.sql` files compiled into the Go binary. `RunMigrations` now reads from `embed.FS` — zero filesystem dependencies.
+
+**Delete UI lag (optimistic update overwritten):**
+- **Root cause**: `useDeleteEmail.onSuccess` invalidated 6 query keys (`emails`, `emails-infinite`, `search`, `accounts`, `folders`, `groups`) + `refetchQueries`. `onMutate` already removed the email from cache optimistically, but `onSuccess` triggered a full refetch of the email list, overwriting the instant optimistic update.
+- **Fix**: `onSuccess` now only invalidates `["folders"]` to update sidebar counters. Email list updates instantly via `onMutate`; rollback via `onError` if server fails.
+
+### Production Stabilization — 2026-06-17
+
+**Auto-migration system:**
+- **`RunMigrations`**: New method on Store interface. Executes all pending `.sql` migration files from `migrations/` directory in sorted order on every server restart. Uses `schema_migrations` tracking table for idempotency. `pg_advisory_lock` serializes migrations across Unified instances. Both PostgreSQL and SQLite implementations.
+- Previously, migrations were manual-only — field operators had to run them by hand. Now applied automatically on container restart.
+
+**Hotkey fixes:**
+- **`navigation:go-inbox`**: Removed `"i"` from defaultKeys — was conflicting with `Shift+I` (`mail:mark-read`). `commandKeyMap` maps each key individually (no sequence parser), so plain `i` was triggering inbox navigation.
+- **Debug logging**: Added and removed diagnostic logging in `useKeyboardShortcuts` to trace Shift combo resolution.
+
+**API fixes:**
+- **`group:` prefix**: Added `!strings.HasPrefix(accountID, "group:")` guard to `GetEmailCount` — group-prefixed account IDs were failing `CheckAccountAccess` with "account not found" (403).
+- **`deleteEmail`/`RestoreFromTrash`**: `GetFolderByName` now treats `sql.ErrNoRows` as "folder not found" instead of 500. Handles missing `name_lower` population gracefully.
+
+**Compose fixes:**
+- **`cap_drop: ALL` removed from PostgreSQL services** in all compose files — blocked `chmod` during PostgreSQL initialization, causing container healthcheck failures on systems with userns-remap (aaPanel/1Panel).
+- **All compose files**: Production and test variants cleaned of security_opt/cap_drop/cap_add for PostgreSQL.
+
+**Frontend fixes:**
+- **`getFolderName`**: Moved `foldersQuery` declaration before `getFolderName` to fix `ReferenceError: Cannot access 'foldersQuery' before initialization` (temporal dead zone).
+
+### Delete Email — SQLite Transaction & Frontend Stability — 2026-06-18
+
+**SQLite `MoveEmailAndEnqueueIMAP` atomic transaction:**
+- Envelope UPDATE + IMAP queue INSERT now runs inside a single `retryBusy`-wrapped transaction. Previously two separate `retryBusy` calls could leave the email in Trash with no IMAP move queued on SQLITE_BUSY contention.
+- `retryBusy` backoff increased from `50<<attempt` (max 1.55s) to `200<<attempt` (max 6.2s), giving more time for concurrent sync workers to release locks.
+
+**Frontend `handleDeleteEmail` (toolbar / `mail:delete` command):**
+- `selectedEmailId` is captured into local `id` at function entry. Selection advances to the next email only after `mutateAsync` resolves — prevents `setSelectedEmailId` from moving when the mutation fails (500 from SQLITE_BUSY).
+- Added `try/catch` with error toast — unhandled promise rejection eliminated.
+
+**Frontend `shortcuts.onDelete` (keyboard Delete / `d` / Backspace):**
+- `deleteMutation.mutate()` called first (triggers sync optimistic update), then `setSelectedEmailId` advances to the next email. React 18 automatic batching renders both state changes together — `displayedEmails` and `selectedEmailId` are always consistent.
+
+**Outcome:** If the backend returns 500 (SQLITE_BUSY), the email reappears in the list via `onError` rollback, selection stays on the original email, and a toast shows the error. If the backend succeeds, the email disappears instantly and selection moves to the next email with zero-lag UX.
+
+### Security & API Sprint — 2026-06-18
+
+**Handler modularization:**
+- Split monolithic `email_handlers.go` (~3250 lines) into 9 focused files plus `email_helpers.go`: `email_action_handlers`, `email_attachment_handlers`, `email_bulk_handlers`, `email_folder_handlers`, `email_misc_handlers`, `email_org_handlers`, `email_read_handlers`, `email_send_handlers`, `email_team_handlers`.
+- Standardized JSON error envelope: replaced `http.Error` with `WriteJSONError` / `WriteInternalError` across all API handlers. `WriteInternalError` deduplicates noisy internal-error logging.
+
+**SSE auth — PR-9 complete:**
+- `GET /api/events` returns **400** when `?token=` is present — JWT in query strings no longer accepted (prevents token leakage in access logs).
+- Auth via `?ticket=` (burn-after-reading, 30s TTL from `GET /api/auth/ticket`) or `rms_token` httpOnly cookie.
+- `TestSSE_RejectsTokenQueryParam` added. Non-SSE routes still accept `?token=` with deprecation warning.
+
+**Auth hardening:**
+- `HandleSetup` sets httpOnly `rms_token` cookie alongside JSON response — first-run flow no longer relies on localStorage token alone.
+
+**E2E & CI:**
+- Playwright mono smoke tests (`e2e/smoke.spec.ts`) in CI.
+- Unified edition E2E (`e2e/unified-auth.spec.ts`) with ephemeral Postgres via `scripts/e2e-unified-backend.sh`. New CI job `e2e-unified`.
+
+### Frontend Architecture Sprint — 2026-06-18
+
+**Inbox page decomposition:**
+- `page.tsx` inbox logic extracted to `useMailInboxPage` hook; further split into `useMailInboxState` (navigation, queries, folder sync, auto-select) and `buildMailViewerProps` (EmailViewer prop assembly).
+
+**Email list hooks:**
+- `email-list.tsx` decomposed into `useEmailListFilters`, `useEmailListKeyboard`, `useEmailListVirtualizer` — filters, keyboard shortcuts, and virtual scroll isolated from the list component.
+
+**Performance:**
+- **EmailRow**: Replaced `framer-motion` swipe gestures with CSS `transform` + `transition` + pointer events — removes per-row animation library overhead in the virtual list.
+- **VirtualEmailList**: Hybrid virtualizer — fixed `ROW_HEIGHT` estimate for off-screen rows, `measureElement` on visible rows so labels/snippets are not clipped.
+- **ChunkLoadRecovery**: Dedicated component auto-reloads on Next.js chunk load failures after deploy.
+
+**Infrastructure:**
+- Alpine `3.21` → `3.22` in Dockerfile.
+- `.gitignore`: `backend_*.txt` debug log patterns excluded.
+
+### Mono Inbox Stabilization — 2026-06-18
+
+**SQLite write queue:** User mutations (delete, move, flag, pin, labels) go through a dedicated write queue prioritized over background IMAP sync. `enqueueWrite` uses `context.WithoutCancel` so writes complete even if the HTTP client disconnects.
+
+**Auth & edition gates:** Restored session API auth for Mono. Edition-gated React Query hooks check `rms_edition` (was `geomail_edition`). Administrative queries (`/api/users`, `/api/groups`) skip fetching in Mono — no 404 retry storms.
+
+**Labels & list UI:** Fixed label CRUD/display in M/U settings (`label-manager`, `settings.ai_cat_empty` i18n). `EmailRow` renders per-email labels and AI category chips with dynamic row height.
+
+### Email Operations & Delete Reliability — 2026-06-18
+
+**Backend:** `MoveEmail` UPDATE scoped by `account_id`. `BulkDeleteEmails` removes `emails_fts` rows and runs inside `withWriteRetry`. Bulk goroutines collect errors via mutex-protected `bulkErr` instead of fire-and-forget. Delete/move handlers use `context.WithoutCancel` for detached writes.
+
+**Frontend:** `handleDeleteEmail` shows error toast; selection advances only after `mutateAsync` succeeds. Keyboard delete routes through `handleDeleteEmail` for consistent feedback.
+
+**Tests:** `TestMoveEmailAndEnqueueIMAP_MovesToTrash` — SQLite move-to-trash + IMAP queue atomicity.
+
+### Move Dialog & Hotkey UX — 2026-06-18
+
+**Move to folder:** `MoveToFolderDialog` replaces `window.prompt` on `M` — in-dialog folder list with solid background, arrow-key navigation, Enter/double-click confirm.
+
+**Hotkey stack:** Global shortcuts suppressed when focus is inside `[role="dialog"]` (`isInsideModal`) — arrow keys no longer switch emails while picking a folder. `Esc` blurs search input via `ui:dismiss` without deselecting the current email.
+
+### E2E — Local Inbox Flow — 2026-06-18
+
+- `e2e/helpers/credentials.ts`, `e2e/helpers/login.ts` — reusable login for local dev.
+- `e2e/inbox-flow.spec.ts` — login, email viewing, bulk actions.
+- `npm run test:e2e:local` — loads `E2E_EMAIL` / `E2E_PASSWORD` from `app_build/.env` or `.env.production` (or `E2E_ENV_FILE` override).
+
+### Pre-Release Audit Remediation — 2026-06-18
+
+**Backend — access control & data isolation:**
+- `ensureEmailAccess` replaces legacy `checkEmailAccess` — email ownership always verified before mutations.
+- Storage UPDATE/DELETE/toggle paths scoped by `account_id` in SQLite and Postgres.
+- `verifyBulkEmailAccess` on bulk read/unread/flag and bulk delete/archive/move by ID.
+- `CheckAccountAccess` uses `EqualFold` on DB path (matches cache path).
+- Mono unified list/search/select-all: `scopedAccountIDs`, `filterEmailsByMonoAccess`, per-account `GetEmailIDs` / `GetEmailCount`.
+- Project groups (`group:`): select-all count/IDs and bulk filter actions aggregate per group member account via `perAccountScopeIDs` / `runBulkFilterOp`.
+
+**Backend — bulk & move reliability:**
+- SQLite `Bulk*ByFilter` wrapped in `withWriteRetry` (no direct `db.Exec` bypass of write queue).
+- Write worker `recover()` on panic.
+- `resolveBulkMoveTarget` — unified/sidebar drag maps folder UUID to same-named folder per account.
+- `folderNameMap` replaces N+1 `GetFolderByID` in bulk filter IMAP enqueue.
+- `buildFilterWhere` / `buildPGWhere`: `INBOX` by name for single-account filter paths.
+
+**Frontend — cache & UX:**
+- `query-cache.ts` — shared optimistic helpers for `emails-infinite`, `folders`, `email` detail.
+- Infinite list cursor stored per page (`{ items, nextCursor }`) — no global `_emailListCursor` race on account switch.
+- `useBatchEmailLabels/Tags` — stable query key, batch capped at 200 IDs.
+- `useBulkAction` — optimistic UI for select-all (filter mode).
+- `HotkeyManager` logs gated behind `NODE_ENV === 'development'`.
+- Unified move dialog: folders from selected email's `account_id`; `isInsideModal` hotkey guard.
+
+**Tests:** `email_helpers_test.go` (`resolveBulkMoveTarget`, group aggregation). `go test ./...` + vitest 17/17 + `tsc --noEmit`.
+
+**Known accepted risk:** `npm audit` reports 7 transitive issues in `next`/`@ducanh2912/next-pwa` (postcss, serialize-javascript). `npm audit fix --force` would downgrade Next.js — **not applied** (version rollback unacceptable).
+
+### Post-Audit Hardening & Inbox UX — 2026-06-18
+
+**Backend — security & correctness (Unified/Mono; Teams handlers untouched):**
+- `CheckAccountAccess`: cache hit now runs `requireAdminForNonMono` — no admin bypass on warm `cache:account:meta:*`.
+- `getEmailTags` → `ensureEmailAccess`; `GetBatchEmailTags` / `GetBatchEmailLabels` → `verifyBulkEmailAccess`.
+- AI `summarizeEmail` / `AICategorizeEmail`: ownership check **before** `readEncryptedFile`.
+- `GetEmails?group_id=`: account list filtered through `CheckAccountAccess` per member.
+- Mono unified: empty `scopedAccountIDs` → empty list; `filterEmailsByMonoAccess` with no allowed accounts → `[]`.
+- `verifyBulkEmailAccess` requires every ID to exist; bulk by ID capped at `maxBulkEmailIDs` (10 000).
+- Filter bulk IMAP: email snapshot **before** `BulkMoveByFilter` — correct `source_folder_name` in queue (was target folder after move).
+- Bulk flag: `BulkSetFlagEmails` / `BulkSetFlagByFilter` + optional `set_flagged` in bulk API (Gmail-style: all flagged → unflag all, else flag all).
+- `/api/emails/count`: `flagged=true` and `has_attachments=true` via `EmailCountOpts` (same aggregation as unread).
+
+**Frontend — filter badges & bulk flag:**
+- Flagged / attachments chip counts from server (`email-folder-counts` React Query), not `emails.filter()` on loaded infinite-scroll slice.
+- `resolveBulkSetFlagged` + `set_flagged` on bulk mutations; optimistic updates apply uniform flag state (not per-row toggle).
+- Counts invalidated after bulk flag and single-email flag toggle.
+
+**Frontend — swipe vs drag (desktop):**
+- Swipes disabled on desktop (`swipeEnabled` at `<1024px`, `pointerType === 'touch'` only).
+- Desktop drag-and-drop: `draggable` on `EmailRow`; virtual list rows positioned with `top: virtualRow.start` instead of `transform: translateY` (fixes DnD hit-test — only first row worked).
+- Semi-transparent drag preview (`setDragImage` ~42% opacity); source row 35% opacity; list scroll locked during drag.
+
+**Frontend — hotkeys & polish:**
+- `bulk-selection-guard`: single-email `d` / `e` / `a` skipped when multi-select or select-all active.
+- `useSnoozeEmail`: optimistic cache via `query-cache.ts` prefix (`emails-infinite` lists).
+- `handleArchive`: selection advances only after successful `mutateAsync`.
+- Batch labels/tags: chunked API requests (200 IDs per chunk, all loaded rows).
+- Inbox `isError` UI instead of misleading empty state; bulk failure toast on rollback.
+
+### Migration System & Mono Bootstrap — 2026-06-18
+
+**Edition-aware migration filters:**
+- `FilesForPostgres()` skips `*_mono.sql`; `FilesForSQLite()` prefers mono twins and excludes Postgres-only files (`005_partition_emails.sql`, `006_uid_validity_bigint.sql`, `010_partition_emails_64.sql`, `021_folders_name_lower_generated.sql`).
+- `IsPostgresOnlyMigration()` exported for tests and future migration tooling.
+
+**Synchronous bootstrap:**
+- `bootstrapDatabase()` runs `InitSchema` + `RunMigrations` before the HTTP server starts; migration failure → `os.Exit(1)` (no half-initialized API).
+
+**Postgres legacy DBs:**
+- `backfillLegacyPostgresMigrations`: partitioned `emails` + empty `schema_migrations` → mark pre-022 migrations applied without re-running destructive partition SQL.
+- `migrationAlreadySuperseded` skips `005` / `010_partition_emails_64` when `emails` is already partitioned (`relkind = p`).
+- `isBenignPostgresMigrationError` tolerates idempotent DDL failures (`already exists`, `duplicate column`).
+- `InitSchema` safety: `ALTER TABLE folders ADD COLUMN IF NOT EXISTS uid_validity BIGINT DEFAULT 0`.
+
+**SQLite / Mono legacy DBs:**
+- `backfillLegacySQLiteMigrations`: existing `emails` table + empty `schema_migrations` → mark pre-`022_folders_uid_validity_mono.sql` migrations applied.
+- `isBenignSQLiteMigrationError` tolerates LibSQL `ADD COLUMN IF NOT EXISTS` syntax errors when column already exists via `addColumnIfMissing`.
+
+**Fixes:**
+- **Mono inbox «Ошибка»:** backend crashed on startup trying to run `005_partition_emails.sql` on SQLite — frontend showed `toast_failed` because `/api/emails` was unreachable.
+- **Unified Postgres:** `column f.uid_validity does not exist` on legacy installs where async migrations raced with sync; `005` re-run on empty `schema_migrations` with already-partitioned `emails`.
+
+### Per-Folder UIDValidity — 2026-06-18
+
+- `folders.uid_validity` column — migration `022_folders_uid_validity.sql` (Postgres) / `022_folders_uid_validity_mono.sql` (SQLite).
+- `models.Folder.UIDValidity`, `UpdateFolderUIDValidity`, `GetFolders` / `GetFolderByID` scans updated (postgres + sqlite).
+- `multi_folder.go`: per-folder UIDVALIDITY mismatch → `ClearFolderQueue`, reset `last_sync_uid`, full folder resync; removed incorrect account-level `UpdateAccountUIDValidity`.
+- `multi_folder_test.go`: `folderUIDValidityMismatch` regression tests.
+- SQLite `InitSchema`: `addColumnIfMissing` for `folders.uid_validity`.
+
+### ESLint CI & E2E Credentials — 2026-06-18
+
+- **ESLint:** `setState-in-effect` fixes in `move-to-folder-dialog.tsx`, `useMailInboxState.ts` (render-time sync pattern); removed unused `onDeleteEmail` chain; `useEmailListVirtualizer` TanStack Virtual eslint-disable; CI lint 0 errors.
+- **E2E local:** `scripts/e2e-local.sh` auto-maps `E2E_EMAIL` / `E2E_PASSWORD` from `M_EMAIL` / `M_PASSWORD` in `.env`; `e2e/helpers/login.ts` — API login + `localStorage` (React controlled inputs bypass).
+- **Tests:** `filter_test.go` (`FilesForSQLite` postgres-only skip); `go test ./internal/migrations ./internal/store/sqlite` green.
+
 ## [3.0.5] — 2026-06-14
 
 ### Stability & Concurrency Improvements
@@ -83,7 +482,7 @@ The `go vet` and remote CI builds were failing with "undefined" reference errors
 #### Frontend Infinite 404 Retry Loops (Mono Edition)
 In the `Mono` (or whitelabel) edition, the backend deliberately doesn't mount the `/api/users` and `/api/groups` endpoints. React Query in the frontend received a `404 Not Found` for these endpoints and entered an aggressive exponential backoff retry loop, creating unnecessary network noise and contributing to rate limiting.
 **Fix (useEmailQueries.ts):**
-- Added strict `enabled` gating checks `typeof window !== "undefined" && localStorage.getItem("geomail_edition") !== "mono" && !window.location.host.startsWith("wm.")` to all administrative queries so they simply skip fetching when running in a standalone environment.
+- Added strict `enabled` gating checks `typeof window !== "undefined" && localStorage.getItem("rms_edition") !== "mono" && !window.location.host.startsWith("wm.")` to all administrative queries so they simply skip fetching when running in a standalone environment.
 
 
 #### MIME Parsing — Gmail IMAP Body-Section Ordering & Boundary Corruption
@@ -170,7 +569,7 @@ Separate `SELECT COUNT(*)` per agent row instead of aggregating in the main quer
 - **Webhook HMAC Fix**: `webhook_queue.go` and `job_worker.go` were sending the RAW SECRET as `X-Signature-256` header — now compute `HMAC-SHA256(secret, payload)`. Secret never leaves the server.
 - **Encryption Domain Separation**: `encryptPassword` now derives per-domain AES keys via `SHA256(raw || ":" || domain)` — IMAP passwords, OAuth tokens, MCP keys, and Telegram tokens each use independent key material (`imap_password`, `oauth_token`, `mcp_key`, `telegram_token`). Decryption falls back to raw key for legacy data.
 - **MCP SSE Cross-Account Isolation**: MCP SSE event loop now filters events by `sessionAccountID` — an MCP client bound to account A cannot receive `new-email` events from account B. SSE (regular) already had `CheckAccountAccess`.
-- **Token in Query String**: Deprecation warning logged when JWT is passed via `?token=` on non-SSE routes. Both `Authorization: Bearer` and `?token=` accepted; frontend already uses headers.
+- **Token in Query String**: SSE rejects `?token=` with 400 (PR-9 complete). Non-SSE routes log deprecation warning when JWT is passed via `?token=`; `Authorization: Bearer` is preferred.
 
 #### Concurrency & Performance
 - **Mono Edition Multi-User Fix**: `MaxOpenConns` raised from 1 to 25, `MaxIdleConns` from 1 to 5. WAL mode now actually parallelizes: readers don't queue behind writers. DSN includes `_synchronous=NORMAL`, `_cache_size=-64000`, `_foreign_keys=ON` so every pooled connection gets them. Result: M edition handles 20-30 concurrent users without queueing.
@@ -615,7 +1014,7 @@ Endpoints that operate on shared infrastructure now require admin privileges via
 - Array index keys replaced with stable IDs in 5 components
 - Mutation cache invalidation in `useSaveAISettings`, `useSetEmailStatus`, `useSendEmail`
 - `prefers-reduced-motion` CSS media query (WCAG 2.3.3)
-- SSE uses relative `/api/events` URL with optional `?token=` — same-origin through Next.js proxy
+- SSE uses relative `/api/events` URL with `?ticket=` or httpOnly cookie — same-origin through Next.js proxy
 - `[SSE]` debug logging with `readyState` tracking in `onopen`/`onerror`
 
 #### Reverse Proxy & Infrastructure

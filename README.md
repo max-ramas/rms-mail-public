@@ -621,3 +621,5 @@ If you have any questions, architectural suggestions, or commercial inquiries, f
 ## ⚖️ License
 
 AGPLv3
+
+Our customers can request source code access under NDA for security review, compliance, or integration purposes.

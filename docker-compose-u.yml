@@ -54,7 +54,7 @@ services:
       start_period: 5s
 
   backend:
-    image: maxramas/rms-mail:latest-u
+    image: maxramas/rms-mail:u-latest
     container_name: rms-mail-api
     restart: unless-stopped
     networks:
@@ -63,6 +63,8 @@ services:
       - "${PORT:-8080}:8080"
     # Run as root to avoid host permission issues with bind-mounted volumes
     user: "0:0"
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-rmsmail}:${POSTGRES_PASSWORD}@rms-mail-pg:5432/${POSTGRES_DB:-rms-mail}?sslmode=prefer
       REDIS_URL: redis://:${REDIS_PASSWORD}@rms-mail-redis:6379
@@ -72,12 +74,26 @@ services:
       CAMO_HMAC_KEY: ${CAMO_HMAC_KEY:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       FRONTEND_URL: ${FRONTEND_URL:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      MCP_API_URL: ${MCP_API_URL:-}
       APP_ENV: ${APP_ENV:-production}
-      # LOG_LEVEL: info
       STORAGE_ROOT: /app/storage
       PORT: "8080"
-      PG_MAX_CONNS: "20"
-      SYNC_BATCH_DELAY_MS: "2000"
+      PG_MAX_CONNS: ${PG_MAX_CONNS:-20}
+      PG_SYNC_MAX_CONNS: ${PG_SYNC_MAX_CONNS:-}
+      PG_STATEMENT_TIMEOUT: ${PG_STATEMENT_TIMEOUT:-}
+      SYNC_BATCH_DELAY_MS: ${SYNC_BATCH_DELAY_MS:-2000}
+      SYNC_MAX_WORKERS: ${SYNC_MAX_WORKERS:-}
+      IMAP_PER_HOST_CONN: ${IMAP_PER_HOST_CONN:-}
+      ASYNC_CONCURRENCY: ${ASYNC_CONCURRENCY:-}
+      TRUSTED_MX_DOMAINS: ${TRUSTED_MX_DOMAINS:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
+      TG_ENVONLY: ${TG_ENVONLY:-}
+      LLM_ENVONLY: ${LLM_ENVONLY:-}
+      AI_DISABLE: ${AI_DISABLE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      # LOG_LEVEL: info
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,7 +116,7 @@ services:
       start_period: 10s
 
   frontend:
-    image: maxramas/rms-mail-ui:latest-u
+    image: maxramas/rms-mail:u-ui-latest
     container_name: rms-mail-ui
     restart: unless-stopped
     networks:

@@ -1,5 +1,115 @@
 # Changelog
 
+## [3.0.7] — 2026-06-19
+
+### Inbox Live Updates — Atomic List & Counter Refresh
+- **`refreshMailInbox()`**: single entry point — `reset`/`invalidate` `emails-infinite` plus simultaneous refetch of list, folders, accounts, and filter badge counts (`email-folder-counts`).
+- **SSE `new-email`**: immediate `refreshListNow({ resetPages: true })` — new mail always on page 1, no 400 ms debounce.
+- **`GlobalMailSSE`**: `useMailPeriodicRefresh` — shared 30 s fallback poll keeps list and counters in sync when SSE disconnects.
+- **Polling desync fix**: removed independent `refetchInterval` on `useAccounts`/`useFolders`; dropped 120 s list poll (4 s only during `syncWarmup`).
+- **SSE backend**: `emails_bulk_updated` added to `sse.go` subscription (Redis + EventBus) — frontend listened but server never forwarded the event.
+- **SSE `folder_updated`**: frontend handler for atomic meta refresh.
+
+### Post-Resync Inbox Recovery
+- **`resetAccountSync`**: `InvalidateEmailCache` + `RefreshUnreadCounts` + SSE `emails_bulk_updated` (`action: reset_sync`).
+- **`OnNewEmail`**: MemCache invalidation without Redis (Mono edition).
+- **Frontend**: `removeQueries(["emails-infinite"])` on reset sync; `GlobalMailSSE` in `[locale]/layout`; `syncWarmup` fast-poll (4 s) while list has fewer than 40 emails.
+- **SSE bursts during resync**: debounced `scheduleListRefresh` replaces blocking `fetchingRef` — list no longer stuck after the first refetch.
+
+### Unread Counter Alignment
+- **`RefreshUnreadCounts`**: tags `smart_category` first, then counts inbox unread excluding smart-category emails (same rule as `GetEmailsCursor`).
+- **`buildFilterWhere` / `GetEmailCount`**: same exclusion for toolbar badges vs sidebar.
+- **Mutations**: mark-read and bulk actions invalidate `email-folder-counts`.
+
+### Email HTML Pipeline & UX
+- **Removed bluemonday**: read path → `normalizeEmailHTML` → `wrapEmailForIframe`; XSS boundary is iframe srcdoc CSP (`script-src 'none'`).
+- **Hardened `sanitizeNode`** in `email_normalize.go`; tests updated.
+- **Email body cursor**: `emailHoverCursor` on iframe overlay (`pointer` for links/buttons, `zoom-in` for images); `coreStyles` + `.email-simple-content` CSS.
+
+### Storage & GC
+- **`GetActiveFilePaths`**: removed `LIMIT 10000` (SQLite + Postgres) — GC no longer marks valid `.eml` files as orphans on large mailboxes.
+
+### IMAP Flag Sync — Multi-Client Parity
+- **Inbound `syncInboundFlags`** (~30 s worker poll): `FETCH FLAGS` for up to 300 recent non-dirty messages per account; reconciles `\Seen`, `\Flagged`, and `\Answered` from server → DB (read/unread both directions, including `unread_count` adjustment).
+- **`ApplyServerEmailFlags`**: atomic server-state apply without setting `is_dirty_locally`; replaces narrow `ApplyServerReadState` / unread-only candidate query.
+- **Outbound `syncFlags`**: batched IMAP `STORE` for `\Seen`, `\Flagged`, and `\Answered` (200 UIDs/batch); `GetDirtyEmails` now includes `is_flagged` + `is_answered`.
+- **Migration 023**: `emails.is_answered` (Postgres + Mono); `IsAnswered` on API model.
+- **Reply → Answered**: `MarkEmailAnsweredByMsgID` after successful send when `in_reply_to` is set (sync + scheduler paths); outbound worker pushes `\Answered` to IMAP.
+- **Fetch ingest**: `\Flagged` and `\Answered` parsed from IMAP flags on new/streaming messages.
+- **SSE / cache**: `email_updated` payload includes `is_read`, `is_flagged`, `is_answered`; `InvalidateEmailCache` on `email_updated`/`email_deleted` without Redis gate (Mono MemCache).
+- **Frontend status poll**: 30 s `refetchInterval` on inbox list and open email detail; `email_updated` triggers soft `scheduleListRefresh` (no page reset).
+
+### IMAP Sync Pipeline — Reliability & Timeliness
+- **IDLE push wired**: CheckWorker registers `UnilateralDataHandler` on dial — unilateral `EXISTS` signals `idleWake` and triggers `checkNewEmails` + `WakeUpAccount` (was dead channel on throwaway `SyncWorker`).
+- **IDLE timing**: periodic refresh uses `Timing.IDLETimeout` (2 min Unified / 30 s Mono, cap 14 min); `IDLEWatchdog` reconnects hung IDLE sessions.
+- **Non-INBOX folders**: `syncNonInboxFolders` in SyncWorker consumer loop (`FolderScanInterval` 5 min / 2 min Mono) — incremental UID scan for Sent/Archive/etc. without full reconnect.
+- **`syncFlags` fix**: `ClearDirtyFlag` only when all `STORE` batches for a folder succeed — failed outbound flag sync is retried on next tick.
+- **Filter rules on ingest**: `RunRules` from `ProcessMessageStreamToFolder` **only for new messages** (`isNewEmail`).
+- **Missing server UIDs**: `GetEmailIDByFolderUID` + `DeleteEmail` when FETCH omits queued UID (message expunged on server).
+- **CheckWorker cursor**: updates INBOX `last_sync_uid` after successful `EnqueueUIDs` — less duplicate SEARCH/enqueue.
+- **Drafts folder**: `resolveDraftsFolder()` — IMAP `SPECIAL-USE \Drafts`, name heuristics (`drafts`, `черновики`), used in `syncDrafts` / `deleteOldDraft`.
+- **`syncBatchDelay`**: pauses between folder sync and UID enqueue batches (`SYNC_BATCH_DELAY_MS`, default 500 ms).
+
+### License & Docker
+- **`UPDATE_CHANNEL`**: baked into Docker images at build time (`ARG`/`ENV` in `Dockerfile`; `stable`/`beta` via `bp-*.sh` / `beta-*.sh`).
+- **`normalizeUpdateChannel()`**: license ping sends only `stable`/`beta`/`alpha` (default `stable`).
+
+### Docker Hub — Single Repository, Edition in Tag
+- **One repo** `maxramas/rms-mail` — edition and role encoded in **tag**: `{m|u|t}[-ui]-{channel|version}`.
+- **Examples:** `m-latest`, `m-ui-latest`, `u-beta`, `m-ui-beta`, `m-test`, `u-3.0.7`, `t-ui-3.0.7`.
+- **Build/push:** `bp-*.sh`, `beta-*.sh`, `build-and-push-test.sh`; all `docker-compose-*.yml` updated.
+- **Deprecated:** split repos `rms-mail-m`, `rms-mail-m-ui`, `rms-mail-u-ui`, … and legacy `rms-mail:latest-m` + `rms-mail-ui:latest-m`.
+
+### Sync Wake-Up & Inbound Flag Refresh
+- **`WakeUpAccountNow`**: immediate consumer wake for IDLE unilateral push, opened email, and user bulk actions — no 0–30 s jitter (`WakeUpAccount` keeps jitter for bulk/restart paths).
+- **`RequestFlagRefresh`**: opening an email queues it for the next inbound `FETCH FLAGS` pass + immediate `WakeUpAccountNow`.
+- **Inbound flag batch**: `inboundFlagSyncLimit` raised to **2000** messages per account per tick (was 300).
+
+### Expunged UID & Local File Cleanup
+- **`PurgeEmailLocalFiles`**: removes encrypted `.eml` body from disk before `DeleteEmail` when server UID is expunged (sync worker + fetcher paths).
+
+### Webhooks & MCP Integrations
+- **Webhook payload**: structured `WebhookEventPayload` — `{ "event": "email.received", "email": { ... } }` (was flat email JSON).
+- **`has_secret`**: webhook list/create responses expose signing status without returning the secret; UI shows `(signed)` badge.
+- **`RunRules` on ingest**: filter rules run only for **new** messages (`isNewEmail` / `EmailExistsByMsgID`) — no rule re-fire on re-sync.
+- **MCP tab**: API key dropdown filtered by current `accountId`; keys scoped per account on create.
+
+### Security & API Hardening
+- **JWT `?token=`**: rejected with **400** on all routes except legacy `/mcp/*` SSE paths (prefer `Authorization` header or `rms_token` cookie).
+- **Rate limits**: `/api/ai/*` — 30 req/min; search endpoints — 60 req/min (Redis when available, in-memory fallback on Mono).
+
+### Mono Schema Repair — `is_answered` (Production Hotfix)
+- **Root cause**: migration `023_email_is_answered_mono.sql` with `ADD COLUMN IF NOT EXISTS` failed silently on some LibSQL/SQLite builds (`near "exists"`) while still recorded in `schema_migrations` → `/api/emails` 500 (`no such column: e.is_answered`).
+- **Fix**: `addColumnIfMissing(..., "is_answered")` in `InitSchema`; `ensureMonoEmailColumns()` after `RunMigrations`; migration 023 rewritten to plain `ALTER TABLE ... ADD COLUMN` (duplicate column = benign).
+- **Test**: `TestInitSchemaRepairsMissingIsAnswered` — legacy table without column repaired on startup.
+
+### Frontend — Inbox & Email Viewer Refactor
+- **`email-viewer`**: split into focused subcomponents (header, body, thread, compose, AI tags, comments, translation, etc.) + shared `types.ts`.
+- **`mail-inbox-layout`**, hooks (`useMailCompose`, `useMailInboxAI`, `useMailInboxCommands`, `useMailLabels`, `useTrashActions`) — thinner page shell.
+- **`api-client.ts`**: centralized fetch/error envelope; Vitest unit tests for `ai-config`, `compose-utils`, `email-address-utils`, `format-file-size`.
+- **UI**: `is_answered` badge in list + viewer; SSE `email_updated` patches `is_read` / `is_flagged` / `is_answered` in React Query cache.
+
+### Reverse Proxy & Mono Single-Port Deployment
+- **Mono compose**: backend `expose: 8080` only — host `ports` disabled by default; all public traffic through **frontend `:3000`**.
+- **Next.js rewrites**: `/api/*`, `/mcp/*`, `/internal/*` → Go backend inside Docker network.
+- **`requestPublicBaseURL()`**: `MCP_API_URL` → `FRONTEND_URL` → `X-Forwarded-Host` / `X-Forwarded-Proto` (comma-separated proto supported).
+- **MCP SSE**: `messages` URL built from public base URL — fixes mixed-content `http://` links behind HTTPS reverse proxy.
+- **`reverse-proxy.md`**: production guide for **Mono** and **Unified** (aaPanel / nginx, single-port recommended, optional split routing for Unified).
+
+### Email HTML & CI Polish
+- **`sanitizeNode`**: strip all `<meta>` tags from email body fragments — invalid inside iframe srcdoc (viewport/charset console warnings).
+- **Migration 023 comment**: no semicolons in SQL comments (runner splits on `;` — broke E2E/bootstrap on Mono).
+- **`mcp-tab`**: derived `resolvedSelectedKeyId` at render — ESLint `set-state-in-effect` CI fix.
+
+### IMAP Multi-Account Gmail — Dial Slots & Sync Error Surfacing
+- **Dial-only semaphore**: `IMAP_PER_HOST_CONN` limits concurrent **TCP dials** to the same host only — slots release immediately after connect succeeds. IDLE and sync workers no longer hold slots for the connection lifetime (was ~2× account count against the cap → false `timed out waiting for IMAP connection slot` on `imap.gmail.com`).
+- **Env cap fix**: `IMAP_PER_HOST_CONN` accepts **1–128** (was capped at 32 — values like `50` were rejected and fell back to default **10**, which matched misleading `cap 10` in errors).
+- **Startup log**: `sync: IMAP per-host dial concurrency cap` — verify effective value after deploy (`docker logs … | grep IMAP`).
+- **Compose / `.env`**: all prod and test `docker-compose-*.yml` pass `IMAP_PER_HOST_CONN`, `SYNC_MAX_WORKERS`, `SYNC_BATCH_DELAY_MS`, `PG_SYNC_MAX_CONNS`, `PUBLIC_URL`, Telegram, MCP vars via `env_file` + `environment`; `.env-m.example` / `.env-u.example` documented.
+- **Sync error messages**: reconnect loop preserves `lastErr`; `last_sync_error` shows real dial/auth failure (not generic “failed after N attempts” only).
+- **OAuth fatal detection**: `invalid_grant`, missing refresh token, and permanent refresh failures → `isFatalSyncAuthError` — account stops retry storm; user must re-authorize Google/Microsoft in UI.
+- **Token refresh reconnect**: SyncWorker and CheckWorker reconnect immediately after successful token refresh (up to 3 tries); Google/Microsoft refresh errors include HTTP response body for diagnosis.
+
 ## [3.0.6] — 2026-06-18
 
 ### Performance & Correctness Sprint — 2026-06-16
@@ -382,7 +492,7 @@
 - `isBenignSQLiteMigrationError` tolerates LibSQL `ADD COLUMN IF NOT EXISTS` syntax errors when column already exists via `addColumnIfMissing`.
 
 **Fixes:**
-- **Mono inbox «Ошибка»:** backend crashed on startup trying to run `005_partition_emails.sql` on SQLite — frontend showed `toast_failed` because `/api/emails` was unreachable.
+- **Mono inbox "Error" state:** backend crashed on startup trying to run `005_partition_emails.sql` on SQLite — frontend showed `toast_failed` because `/api/emails` was unreachable.
 - **Unified Postgres:** `column f.uid_validity does not exist` on legacy installs where async migrations raced with sync; `005` re-run on empty `schema_migrations` with already-partitioned `emails`.
 
 ### Per-Folder UIDValidity — 2026-06-18
@@ -1075,7 +1185,7 @@ Endpoints that operate on shared infrastructure now require admin privileges via
 - **FIX**: Token save failure now redirects with `?oauth=error&error=Token save failed`. Worker detects fatal errors (`no refresh token`, `account not found`) and stops retrying.
 
 #### docker-compose — Production Port Mapping
-- **FIX**: Fixed port mapping and network binding environment variables in production docker-compose configurations и Fixed positional parameter generation edge case in PostgreSQL query builder.
+- **FIX**: Fixed port mapping and network binding environment variables in production docker-compose configurations and fixed positional parameter generation edge case in PostgreSQL query builder.
 
 #### Dockerfile — UID Mismatch
 - **HIGH**: `adduser -S appuser` (no `-u` flag) → Alpine assigned UID 100. Host storage owned by UID 1000. `mkdir /app/storage/emails: permission denied`.

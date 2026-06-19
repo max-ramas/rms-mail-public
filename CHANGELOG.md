@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.8] — 2026-06-19
+
+### Camo Image Proxy — Marketing Emails & Reliability
+- **`sanitizeImageURL`**: some marketing platforms (Banana Republic, etc.) emit SOH (`0x01`) instead of `=` in image URL query strings — `net/url.Parse` failed → `/api/media/proxy` returned **502**. Repaired at HTML normalize and proxy handler time.
+- **Pinned HTTPS fetch**: TLS `ServerName` when dialing resolved IP; prefer **IPv4** over IPv6 (Docker egress); follow up to **5** HTTP redirects with re-pin per hop.
+- **Camo cache**: files under `STORAGE_ROOT/camo` (aligned with compose volume mount).
+- **Graceful image failure**: upstream fetch errors return **1×1 transparent GIF (HTTP 200)** instead of 502 JSON — `<img>` tags no longer flood the browser console.
+- **Timeouts / UA**: camo handler context **20 s**; browser-compatible `User-Agent` for picky CDNs.
+
+### Email Iframe CSP — External Stylesheets
+- **`style-src`**: expanded to `'unsafe-inline' https:` — external `<link rel="stylesheet">` loads (Google Fonts CSS, `cdn.tbank.ru`, etc.). Fixes CSP console errors on branded newsletters while `script-src` remains absent.
+
+### About — Version & Update Channel
+- **`GET /api/license`**: adds `app_version` (Go binary / ldflags) and `update_channel` (`stable` | `beta` | `alpha` from `UPDATE_CHANNEL` baked into image).
+- **About tab**: **Stable / Beta / Alpha** badge beside version; displays backend `app_version` when available (matches license telemetry).
+
 ## [3.0.7] — 2026-06-19
 
 ### Inbox Live Updates — Atomic List & Counter Refresh

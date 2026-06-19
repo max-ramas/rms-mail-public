@@ -38,8 +38,8 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable / Production-Ready (**v3.0.7**, 2026-06-19)
-- Unified edition: Stable / Production-Ready (**v3.0.7**, 2026-06-19)
+- Mono edition: Stable / Production-Ready (**v3.0.8**, 2026-06-19)
+- Unified edition: Stable / Production-Ready (**v3.0.8**, 2026-06-19)
 - Mono Pro edition: Planned
 - Teams edition: Planned
 
@@ -63,6 +63,7 @@ Documentation, walkthrough videos, and deployment guides are being expanded. Pro
 - **Docker Hub** — single repository `maxramas/rms-mail` with edition tags (`m-latest`, `m-ui-latest`, `u-latest`, …).
 - **Production proxy (v3.0.7)** — Mono serves public traffic on **`:3000` only**; Next.js rewrites `/api`, `/mcp`, `/internal` to the backend.
 - **IMAP multi-account Gmail (v3.0.7)** — dial-only per-host cap; OAuth errors (`invalid_grant`) surfaced in account sync status.
+- **Camo & newsletter rendering (v3.0.8)** — marketing image URL repair, external CSS in email iframe, About shows update channel (Stable/Beta/Alpha).
 
 ---
 
@@ -203,6 +204,8 @@ We fixed the most annoying UX limitations of self-hosted email:
 * **Smart Mail Auto-Discovery:** Dynamic Mail Server Resolver automatically discovers IMAP/SMTP hosts, ports, and encryption methods based purely on your email domain. No Thunderbird-style setup hell.
 * **Resilient IMAP Sync Batching:** Synchronization queries data in strict 500-UID increments with per-batch checkpoints. Streaming fetch writes raw MIME to disk with bounded memory — safe on 200,000+ message folders and large attachments.
 * **Multi-account Gmail on one host:** `IMAP_PER_HOST_CONN` limits concurrent dials to `imap.gmail.com` (not open IDLE sessions); sync status shows real OAuth errors (`invalid_grant` → re-authorize in Settings).
+* **Camo image proxy:** external images in newsletters proxied with privacy; broken/marketing-mangled URLs degrade gracefully (no console 502 spam).
+* **Newsletter fidelity:** email iframe allows HTTPS stylesheets (Google Fonts, bank CDNs) while keeping scripts blocked.
 * **IMAP IDLE + watchdog:** Push sync via IDLE with configurable timeouts and reconnect watchdogs; non-INBOX folders scanned on a schedule (Sent, Archive, Drafts with localized mailbox name detection).
 * **Full IMAP flag sync:** `\Seen`, `\Flagged`, and `\Answered` reconcile with the server in both directions; outbound changes batch `STORE` (200 UIDs); opening a message can trigger an immediate flag refresh.
 * **Unlimited Bulk-by-Filter Actions:** Works on ANY folder density. Select all emails and apply read/unread/delete mutations instantly. No "visible rows only" limitations. No pagination or heavy JSON processing memory overhead.
@@ -651,15 +654,16 @@ This project is heavily shaped by support workflows, operational reality, multi-
 
 ## 🗺️ Roadmap
 
-**Current release: v3.0.7 (2026-06-19)** — see [CHANGELOG.md](./CHANGELOG.md) for the full 3.0.4→3.0.7 history.
+**Current release: v3.0.8 (2026-06-19)** — see [CHANGELOG.md](./CHANGELOG.md) for the full 3.0.4→3.0.8 history.
 
-**Recently shipped (3.0.4 – 3.0.7):**
+**Recently shipped (3.0.4 – 3.0.8):**
 * IMAP `\Seen` bidirectional sync (3.0.4) → full `\Flagged` / `\Answered` parity + reply→answered (3.0.7)
 * Streaming sync, keyset pagination, denormalized unread counts, smart-category exclusion (3.0.5–3.0.6)
 * AI categories, auto-rules, Auto-Draft, folder management UI (3.0.6)
 * Atomic inbox SSE refresh, Docker Hub `maxramas/rms-mail`, Mono single-port HTTPS proxy (3.0.7)
 * Webhook payload v2, MCP per-account keys, API hardening (3.0.7)
 * IMAP multi-account Gmail: dial-only connection cap, OAuth `invalid_grant` surfacing (3.0.7)
+* Camo proxy + newsletter CSS in email iframe; About update channel badge (3.0.8)
 
 Current priorities:
 

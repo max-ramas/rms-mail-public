@@ -38,8 +38,8 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable / Production-Ready (**v3.0.8**, 2026-06-19)
-- Unified edition: Stable / Production-Ready (**v3.0.8**, 2026-06-19)
+- Mono edition: Stable / Production-Ready (**v3.0.9**, 2026-06-25)
+- Unified edition: Stable / Production-Ready (**v3.0.9**, 2026-06-25)
 - Mono Pro edition: Planned
 - Teams edition: Planned
 
@@ -53,6 +53,8 @@ The project currently prioritizes:
 Documentation, walkthrough videos, and deployment guides are being expanded. Production HTTPS / reverse-proxy setup: **[reverse-proxy.md](./reverse-proxy.md)**. Full technical history: **[CHANGELOG.md](./CHANGELOG.md)**.
 
 **Shipped since v3.0.4 (highlights):**
+- **Email body text selection fix (v3.0.9)** — removed `pointer-events-none` from iframe; complex HTML emails fully selectable. Links open in new tabs, standalone images show lightbox.
+- **SSE `email_updated` payload (v3.0.9)** — all mutation handlers now broadcast actual field values (`is_read`, `is_flagged`, `is_pinned`, `is_muted`, `folder_id`, `snoozed`) instead of just `{email_id, account_id}`.
 - **IMAP multi-client parity** — `\Seen`, `\Flagged`, and `\Answered` sync inbound (~30 s) and outbound (batched `STORE`); replies mark `\Answered` on the server.
 - **Streaming IMAP ingest** — `io.Reader` pipeline with O(1) memory per folder; bodies ≤1 MiB parsed in RAM (no sync_queue round-trip on initial fetch).
 - **Real-time inbox** — atomic list + counter refresh over SSE; `new-email` and bulk events keep sidebar badges aligned with the open list.
@@ -654,9 +656,9 @@ This project is heavily shaped by support workflows, operational reality, multi-
 
 ## 🗺️ Roadmap
 
-**Current release: v3.0.8 (2026-06-19)** — see [CHANGELOG.md](./CHANGELOG.md) for the full 3.0.4→3.0.8 history.
+**Current release: v3.0.9 (2026-06-25)** — see [CHANGELOG.md](./CHANGELOG.md) for the full 3.0.4→3.0.9 history.
 
-**Recently shipped (3.0.4 – 3.0.8):**
+**Recently shipped (3.0.4 – 3.0.9):**
 * IMAP `\Seen` bidirectional sync (3.0.4) → full `\Flagged` / `\Answered` parity + reply→answered (3.0.7)
 * Streaming sync, keyset pagination, denormalized unread counts, smart-category exclusion (3.0.5–3.0.6)
 * AI categories, auto-rules, Auto-Draft, folder management UI (3.0.6)
@@ -664,6 +666,7 @@ This project is heavily shaped by support workflows, operational reality, multi-
 * Webhook payload v2, MCP per-account keys, API hardening (3.0.7)
 * IMAP multi-account Gmail: dial-only connection cap, OAuth `invalid_grant` surfacing (3.0.7)
 * Camo proxy + newsletter CSS in email iframe; About update channel badge (3.0.8)
+* Email body text selection fix; SSE `email_updated` payload with real status fields; `is_pinned`/`is_muted` SSE sync (3.0.9)
 
 Current priorities:
 

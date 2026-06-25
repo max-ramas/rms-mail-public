@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.0.9] — 2026-06-25
+
+### Email Body — Text Selection Fix
+- **`pointer-events-none` removed** from iframe in `EmailBody` component — text in complex HTML emails was unselectable. Event handling (cursor, image lightbox, click forwarding) moved from the outer container into the iframe's `contentDocument` via `handleIframeLoad`.
+- **`mousemove` listener** on iframe document restores `emailHoverCursor` (`zoom-in` for images, `pointer` for links).
+- **`click` listener** on iframe document opens lightbox for standalone images; all other clicks (links, buttons) work natively.
+- **`getSelectedText()`** (`useImperativeHandle`) already read from `contentWindow.getSelection()` — now works correctly without `pointer-events-none` interference.
+
+### SSE email_updated — Real Status Fields in Payload
+- **Backend**: all mutation handlers (`markEmailRead`, `toggleFlagEmail`, `togglePinEmail`, `toggleMuteEmail`, `snoozeEmail`, `moveEmail`, `saveDraftReply`, `clearDraftReply`) now include the **actual field value** in the SSE `email_updated` payload:
+  - `is_read` (markEmailRead)
+  - `is_flagged` (toggleFlagEmail)
+  - `is_pinned` (togglePinEmail)
+  - `is_muted` (toggleMuteEmail)
+  - `folder_id` (moveEmail)
+  - `snoozed` (snoozeEmail)
+  - `draft_saved` / `draft_cleared` (saveDraftReply / clearDraftReply)
+- **Frontend `EmailFlagPatch`**: extended with `is_pinned | is_muted` so SSE patching works for all status fields.
+- **Frontend SSE handler**: now extracts `is_pinned` and `is_muted` from `email_updated` events; skips `scheduleListRefresh()` when only flags changed (cache already patched); falls through to full refresh when `folder_id` is present (move).
+
+### useMuteEmail — Optimistic Detail Cache
+- `updateEmailDetail: false` → `true` — mute status now optimistically updates the email detail cache (matching pin/flag behavior).
+
+### Email Body — Link & Button Click Fix (All Modes)
+- **Complex HTML (iframe)**: added button/submit interception — `<button>`, `<input type='submit'>`, `[role='button']` clicks now prevent default + open form `action` URL in new tab. Prevents form submission from navigating the iframe (white screen).
+- **Simple HTML (div)**: same button interception added to `onClick` handler.
+- **TS Fix**: `closest("a[href]")` → `closest<HTMLAnchorElement>("a[href]")` resolves TS2339.
+
 ## [3.0.8] — 2026-06-19
 
 ### Camo Image Proxy — Marketing Emails & Reliability

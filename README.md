@@ -38,8 +38,8 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable / Production-Ready (**v3.0.9**, 2026-06-25)
-- Unified edition: Stable / Production-Ready (**v3.0.9**, 2026-06-25)
+- Mono edition: Stable / Production-Ready (**v3.1.0**, 2026-06-26)
+- Unified edition: Stable / Production-Ready (**v3.1.0**, 2026-06-26)
 - Mono Pro edition: Planned
 - Teams edition: Planned
 
@@ -61,6 +61,8 @@ Documentation, walkthrough videos, and deployment guides are being expanded. Pro
 - **AI category taxonomy** — admin-configurable categories with auto-read / auto-move rules after AI tagging.
 - **Auto-Draft** — AI-generated reply drafts with in-viewer banner (UIDPLUS + SSE).
 - **Performance core** — keyset pagination, denormalized `unread_count`, `smart_category` column, dual PostgreSQL pools (sync vs HTTP), LibSQL WAL on Mono.
+- **PostgreSQL production tuning (v3.1.0)** — connection pool capped at `min(20, CPU*4)` for Docker-friendly RAM usage; `ANALYZE emails` after bulk sync prevents Seq Scan on freshly-ingested mailboxes; covering index `(folder_id, is_read, is_muted, is_pinned DESC, date_sent DESC, id DESC)` eliminates sort for filtered reads; BRIN index on `date_sent` for compact time-series aggregations; `autovacuum_vacuum_insert_scale_factor = 0.05` for append-heavy workloads.
+- **Email HTML4→CSS3 centering fix (v3.1.0)** — `normalizeEmailHTML` now emits `-webkit-center`/`-moz-center` for `div`/`td`/`th` with `align="center"`; fixes left-aligned content blocks and broken button cells in marketing emails (Fix Price, NB, GPB, Glassdoor).
 - **Security & integrations** — structured webhook payloads + HMAC, MCP keys scoped per account, JWT `?token=` rejected on API routes, AI/search rate limits.
 - **Docker Hub** — single repository `maxramas/rms-mail` with edition tags (`m-latest`, `m-ui-latest`, `u-latest`, …).
 - **Production proxy (v3.0.7)** — Mono serves public traffic on **`:3000` only**; Next.js rewrites `/api`, `/mcp`, `/internal` to the backend.
@@ -451,7 +453,8 @@ RMS Mail does not rely on slow IMAP search or memory-heavy external indexing sid
 2. Metadata normalization and cross-language UTF-8 strict sanitization.
 3. Native full-text index generation (SQLite FTS5 virtual engine / PostgreSQL `tsvector` + GIN).
 4. Keyset cursor pagination `(is_pinned, date_sent, id)` — O(1) depth at any inbox offset.
-5. Real-time UI virtualization (TanStack Virtual + `measureElement`).
+5. PostgreSQL production tuning (v3.1.0): covering index `(folder_id, is_read, is_muted, is_pinned DESC, date_sent DESC, id DESC)` eliminates sort on filtered reads; BRIN index on `date_sent` for compact time-series aggregations; connection pool `min(20, CPU*4)` prevents OOM in Docker; `ANALYZE emails` after bulk sync prevents Seq Scan; `autovacuum_vacuum_insert_scale_factor = 0.05` triggers vacuum promptly on insert-heavy workloads.
+6. Real-time UI virtualization (TanStack Virtual + `measureElement`).
 
 **Result:** sub-100ms text search, instant filter counting, fast bulk operations on six-figure mailboxes.
 
@@ -469,7 +472,7 @@ Raw MIME ──▶ enmime parser ──▶ HTML normalization ──▶ iframe C
 **Features:**
 
 * MIME normalization
-* HTML normalization (`sanitizeNode`) with iframe `srcdoc` CSP boundary (`script-src 'none'`)
+* HTML normalization (`sanitizeNode`) with iframe `srcdoc` CSP boundary (`script-src 'none'`); HTML4→CSS3 attribute conversion including `align="center"` → `-webkit-center`/`-moz-center` for correct block centering in standards mode
 * quote folding
 * inline attachment support
 * tracking protection
@@ -656,9 +659,11 @@ This project is heavily shaped by support workflows, operational reality, multi-
 
 ## 🗺️ Roadmap
 
-**Current release: v3.0.9 (2026-06-25)** — see [CHANGELOG.md](./CHANGELOG.md) for the full 3.0.4→3.0.9 history.
+**Current release: v3.1.0 (2026-06-26)** — see [CHANGELOG.md](./CHANGELOG.md) for the full history.
 
-**Recently shipped (3.0.4 – 3.0.9):**
+**Recently shipped:**
+* **Docker production i18n fix (v3.1.0)** — standalone Next.js builds now correctly bundle and serve all 45 translation namespaces; resolved `MISSING_MESSAGE` errors in production containers.
+* **Priority on-demand mail sync (v3.1.0)** — Unified edition: clicking an account in the sidebar triggers an immediate out-of-band IMAP scan (INBOX + all folders), independent from background workers.
 * IMAP `\Seen` bidirectional sync (3.0.4) → full `\Flagged` / `\Answered` parity + reply→answered (3.0.7)
 * Streaming sync, keyset pagination, denormalized unread counts, smart-category exclusion (3.0.5–3.0.6)
 * AI categories, auto-rules, Auto-Draft, folder management UI (3.0.6)

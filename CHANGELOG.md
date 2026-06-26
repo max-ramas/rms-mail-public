@@ -1,5 +1,64 @@
 # Changelog
 
+## [3.1.0] — 2026-06-26
+
+### i18n — Docker Production Fix (MISSING_MESSAGE)
+- **`src/lib/load-messages.ts`**: new isolated message-loading utility with strict error logging and runtime empty-object guard.
+  - Reads JSON directly via `fs/promises` from `src/locales/{locale}/{ns}.json`.
+  - `deepMerge` of namespaces: `common` → `mail` → `settings` → `auth` → `commands`.
+  - Falls back to `en` first, then overlays target locale — missing keys show English, not raw keys.
+  - `console.error` on empty messages object (diagnostic for Docker standalone).
+- **`src/i18n/request.ts`**: updated to next-intl v4 API — `({ requestLocale })` with `await requestLocale` (Next.js 16 async params).
+  - Delegates to `loadMessages(locale)`; removed inline file-reading.
+- **`src/app/[locale]/layout.tsx`**: `getMessages()` called **without arguments** — reads from cached React context initialized by `request.ts`.
+- **`next.config.ts`**: `outputFileTracingIncludes` fixed — key `"/[locale]/**/*"` (was invalid `"/*"`); paths `./src/locales/**/*.json` + `./src/i18n/**/*.ts`.
+- **`Dockerfile`**: `src/i18n` + `src/locales` copied to runtime image; `chown -R node:node ./src` ensures read access for `USER node`.
+
+### Priority On-Demand Mail Sync (Unified)
+- **`internal/sync/priority_checker.go`**: new `PriorityChecker` — isolated, short-lived IMAP scanner for user-initiated sync.
+  - Opens temporary connection (2 min timeout), authenticates, runs `SyncAllFolders` (INBOX + all folders), disconnects.
+  - Never interferes with long-lived `CheckWorker` / `SyncWorker` goroutines.
+  - Reuses existing `dialWithRateLimit`, `authenticate`, `SyncAllFolders`, `syncFolderByUID` — zero code duplication.
+- **`internal/api/account_handlers.go`**: new endpoint `POST /api/accounts/{id}/check-now`.
+  - `CheckAccountAccess` authorization.
+  - Background goroutine with 2-minute context timeout — HTTP returns `{"status":"ok"}` immediately.
+- **`cmd/server/main.go`**: `PriorityChecker` wired into `apiHandler` via `sync.NewPriorityChecker(store, oauthManager)`.
+- **`frontend/src/components/email-sidebar.tsx`**: `handleAccountSelect` triggers `fetch POST /api/accounts/{id}/check-now` for concrete accounts (skip unified/groups).
+  - `.catch(() => {})` — best-effort, never blocks UI.
+
+### PostgreSQL Database Optimizations (Production)
+- **Connection pool tuning** (`internal/store/postgres/storage.go`)
+  - `MaxConns` default: `100` → `min(20, CPU*4)` (5–20 depending on CPU count).
+  - Prevents OOM on Docker containers with ≤1 GB RAM (each PG backend process forks ~5–10 MB).
+  - Override: `PG_MAX_CONNS` / `PG_SYNC_MAX_CONNS` env vars.
+- **ANALYZE after bulk sync** (`internal/store/postgres/storage.go`, `internal/sync/worker.go`)
+  - New `AnalyzeAfterBulk()` method runs `ANALYZE emails` asynchronously after `SyncAllFolders` completes.
+  - Prevents query planner from choosing Seq Scan on recently-populated tables.
+- **FTS subject update fix** (`internal/store/postgres/storage.go`)
+  - `SaveEmail` / `SaveEmailToFolder` / both fallbacks: `tsvector` now updates when `subject` changes (was checking only `uid`, `snippet`, `body_path`, `folder_id`).
+  - Fixes missing search results after email subject modification.
+- **Covering index `idx_emails_folder_read_sent`** (`schema.sql`, `schema_mono.sql`)
+  - `(folder_id, is_read, is_muted, is_pinned DESC, date_sent DESC, id DESC)` — eliminates sort step for `GetEmailsCursor` with unread filter.
+- **BRIN index `idx_emails_date_brin`** (`schema.sql`)
+  - `USING brin(date_sent)` — ~1000× smaller than B-tree, ideal for time-series aggregation queries.
+- **Autovacuum insert tuning** (`schema.sql`)
+  - `ALTER TABLE emails SET (autovacuum_vacuum_insert_scale_factor = 0.05)` — triggers vacuum on insert-heavy workloads before classic threshold.
+- **Partial index `body_path` fix** (`schema.sql`)
+  - `WHERE body_path IS NOT NULL AND body_path != ''` — empty-string default no longer breaks partial index.
+- **`email_comments` FK index** (`schema.sql`, `schema_mono.sql`)
+  - `idx_email_comments_email_account (email_id, account_id)` — fast cascade DELETE when email is removed.
+- **`sender_profiles` cleanup index** (`schema.sql`)
+  - `idx_sender_profiles_updated_at (updated_at)` — enables efficient TTL cleanup of stale avatar cache entries.
+
+### Email HTML Normalizer — Block-Centering Fix (HTML4 → Standards Mode)
+- **`internal/api/email_normalize.go`**: `normalizeNode` now emits `-webkit-center` / `-moz-center` alongside `text-align:center` for **all** block containers with `align="center"`:
+  - `div`, `p`, `h1`–`h6` — these are always block containers; `text-align:center` only centers inline content in standards mode (`<!DOCTYPE html>`).
+  - `td`, `th` — email clients sometimes put `display:block` on table cells for button-like styling (`border-radius` + background); without `table-cell` context `text-align:center` does not center block children.
+- **`nowrap` → `white-space:nowrap`**: deprecated HTML4 attribute on `<td>` now converted to CSS (was silently ignored).
+- **`internal/api/email_normalize_test.go`**: new `TestNormalizeAlignCenterOnBlockContainers` covers `div`, `td` (with `display:block`), `nowrap`, `valign`.
+- **Affected emails**: marketing/newsletter emails using `<div align="center">` wrapper or `<td align="center" style="display:block">` button cells (Fix Price, GPB, Neon Buddha, Glassdoor — all verified against real `.eml` files).
+- **Cascade safety**: `text-align:center` (always valid) → `-webkit-center` (WebKit/Blink override) → `-moz-center` (Gecko override). Each engine silently drops unknown values; the last valid one wins.
+
 ## [3.0.9] — 2026-06-25
 
 ### Email Body — Text Selection Fix

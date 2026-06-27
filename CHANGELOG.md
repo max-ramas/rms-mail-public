@@ -1,5 +1,59 @@
 # Changelog
 
+## [3.1.1] — 2026-06-27
+
+### Backend Architecture Refactoring — SOLID / DRY / KISS / YAGNI
+
+**Interface Segregation (ISP)**
+- **`internal/api/store_interfaces.go`**: 7 segregated interfaces replacing the 100-method `Store` monolith.
+  - `EmailReader` (31 methods), `EmailWriter` (41), `AccountStore` (17), `FolderStore` (8), `EntityStore` (templates/labels/rules/contacts/groups/users/comments), `AdminStore` (admin/AI/MCP/webhooks/Telegram), `SystemStore` (migrations/FTS/queue/jobs).
+  - Composite `Store` interface preserved for backward compatibility.
+- **`internal/api/handlers.go`**: `Handler` now exposes segregated fields (`Emails`, `Writer`, `Accounts`, `Folders`, `Entities`, `Admin`, `System`) alongside legacy `Store`.
+
+**Single Responsibility (SRP) — Storage Monoliths Split**
+- **`internal/store/postgres/`**: `storage.go` 3980 → 561 lines. New files: `emails.go` (2020), `accounts.go` (387), `org.go` (396), `integrations.go` (440), `folders.go` (137), `labels_tags.go` (82), `attachments.go` (55).
+- **`internal/store/sqlite/`**: mirror split (4386 → 465 lines).
+- **`internal/store/shared/crypto.go`**: extracted `EncryptPassword` / `DecryptPassword` shared between both implementations.
+- **`WithTx()`** added to both `postgres.Storage` and `sqlite.Storage` for atomic cross-file transactions.
+
+**DRY — Duplication Elimination**
+- **`internal/mime/qp.go`**: unified `DecodeQuotedPrintable` — removed 3 duplicate implementations (`api`, `sync`, dead code in `handlers.go`).
+- **`internal/api/email_action_handlers.go`**: `toggleEmail` helper — 3 toggle functions replaced with single-argument wrappers.
+- **`internal/store/postgres/email_columns.go`**: `emailColumns` / `emailColumnsPrefixed` constants — 10 duplicated column lists → 2 constants.
+
+**OCP — Registry Pattern**
+- **`internal/api/email_action_registry.go`**: `emailActions` map (11 actions) registered in `init()`. `HandleEmail` switch-case replaced with O(1) map lookup. Thread-safe: write-once in `init()`, read-only at request time.
+
+**Dependency Inversion (DIP)**
+- **`internal/sync/interfaces.go`**: `CASStore` interface (1 method) + `AIProvider` interface (3 methods) defined in consuming package.
+- `Fetcher` and `Manager` now depend on interfaces instead of concrete `*attachment.CASStorage` and `*ai.Gateway`. Testable without real file-system or AI.
+
+**YAGNI Cleanup**
+- Removed: `internalDecodeQP` + `unhexDigit` (dead code, −32 lines).
+- Removed: `BulkToggleFlagEmails` from interface + both implementations + mock (−28 lines).
+- Removed: `sqlite.Storage.Query/QueryRow/Exec` — raw SQL access not in contract (−15 lines).
+- Removed: 5 backup files `storage.go.bak*` (−775KB).
+
+### GlitchTip / Sentry Error Monitoring (Backend + Frontend)
+- **`internal/sentry/`** (new package): `Init()`, `IsEnabled()`, `Flush()`, `CaptureException()`, `Recover()`, `Go()` — all no-ops when `SENTRY_DSN` is unset, zero overhead.
+- **`cmd/server/main.go`**: `sentry.Init()` after log setup, `defer sentry.Flush()` on shutdown, `CaptureException` in HTTP panic recovery.
+- **`internal/api/errors.go`**: `WriteInternalError` → `sentry.CaptureException(err)` — all 500 errors reported with request context.
+- **`internal/sync/imap_connect.go`**: `reportProvisionalSyncError` → `sentry.CaptureException(err)` — IMAP/auth errors tracked per account.
+- **Frontend Sentry SDK** (`@sentry/nextjs`): `sentry.client.config.ts` + `sentry.server.config.ts` + `sentry.edge.config.ts` — conditional init via `NEXT_PUBLIC_SENTRY_DSN`.
+- **`next.config.ts`**: `withSentryConfig()` — conditional wrapping, source maps upload at build time (`SENTRY_AUTH_TOKEN`).
+- **App Router error boundaries**: `src/app/[locale]/error.tsx` + `src/app/global-error.tsx` — `Sentry.captureException(error)` on SSR/CSR failures.
+- **`sentry.client.config.ts`**: `tracePropagationTargets: [/^\/api/]` — auto-propagates `sentry-trace` header to backend, linking frontend errors with backend traces.
+- **Docker**: docker-compose files + .env files updated with `SENTRY_DSN` / `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_DSN` variables. Frontend `Dockerfile` accepts `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` as build ARGs for source map upload.
+- **GlitchTip compatible**: uses standard Sentry SDK (DSN format identical). No proprietary features.
+
+
+### Auth — Login Second-Attempt Fix
+- **`internal/api/middleware/auth.go`**: `extractToken()` priority changed — `Authorization` header (localStorage) now checked **before** httpOnly cookie.
+  - After login, the frontend stores the fresh token in `localStorage` synchronously and sends it via `Authorization` header.
+  - Cookie was previously checked first, so a stale/expired cookie from a previous session could cause the first post-login request to fail with 401 — forcing a second login attempt.
+  - Header-first ensures the freshest token is always used; cookie remains as fallback for page reload survival.
+
+
 ## [3.1.0] — 2026-06-26
 
 ### i18n — Docker Production Fix (MISSING_MESSAGE)

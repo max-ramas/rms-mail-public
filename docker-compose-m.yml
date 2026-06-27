@@ -57,6 +57,8 @@ services:
       TRUSTED_MX_DOMAINS: ${TRUSTED_MX_DOMAINS:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
       TG_ENVONLY: ${TG_ENVONLY:-}
       LLM_ENVONLY: ${LLM_ENVONLY:-}
       AI_DISABLE: ${AI_DISABLE:-false}
@@ -91,6 +93,8 @@ services:
       - PORT=3000
       - API_URL=http://backend:8080
       - INTERNAL_URL=http://backend:8080
+      - NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN:-}
+      - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
     depends_on:
       - backend
 

@@ -63,6 +63,8 @@ Documentation, walkthrough videos, and deployment guides are being expanded. Pro
 - **Performance core** — keyset pagination, denormalized `unread_count`, `smart_category` column, dual PostgreSQL pools (sync vs HTTP), LibSQL WAL on Mono.
 - **PostgreSQL production tuning (v3.1.0)** — connection pool capped at `min(20, CPU*4)` for Docker-friendly RAM usage; `ANALYZE emails` after bulk sync prevents Seq Scan on freshly-ingested mailboxes; covering index `(folder_id, is_read, is_muted, is_pinned DESC, date_sent DESC, id DESC)` eliminates sort for filtered reads; BRIN index on `date_sent` for compact time-series aggregations; `autovacuum_vacuum_insert_scale_factor = 0.05` for append-heavy workloads.
 - **Email HTML4→CSS3 centering fix (v3.1.0)** — `normalizeEmailHTML` now emits `-webkit-center`/`-moz-center` for `div`/`td`/`th` with `align="center"`; fixes left-aligned content blocks and broken button cells in marketing emails (Fix Price, NB, GPB, Glassdoor).
+- **Backend architecture refactoring (v3.1.1)** — SOLID/DRY/KISS/YAGNI: ISP (7 segregated interfaces), SRP (storage split to 9 files per database), DIP (CASStore/AIProvider interfaces in sync), OCP (email action registry), DRY (−250 duplicate lines).
+- **GlitchTip / Sentry error monitoring (v3.1.1)** — optional zero-overhead integration: `SENTRY_DSN` env var enables both backend (`internal/sentry/`) and frontend (`@sentry/nextjs`, `error.tsx` + `global-error.tsx`); automatic `sentry-trace` header propagation links frontend errors with backend traces.
 - **Security & integrations** — structured webhook payloads + HMAC, MCP keys scoped per account, JWT `?token=` rejected on API routes, AI/search rate limits.
 - **Docker Hub** — single repository `maxramas/rms-mail` with edition tags (`m-latest`, `m-ui-latest`, `u-latest`, …).
 - **Production proxy (v3.0.7)** — Mono serves public traffic on **`:3000` only**; Next.js rewrites `/api`, `/mcp`, `/internal` to the backend.
@@ -659,7 +661,7 @@ This project is heavily shaped by support workflows, operational reality, multi-
 
 ## 🗺️ Roadmap
 
-**Current release: v3.1.0 (2026-06-26)** — see [CHANGELOG.md](./CHANGELOG.md) for the full history.
+**Current release: v3.1.1 (2026-06-27)** — see [CHANGELOG.md](./CHANGELOG.md) for the full history.
 
 **Recently shipped:**
 * **Docker production i18n fix (v3.1.0)** — standalone Next.js builds now correctly bundle and serve all 45 translation namespaces; resolved `MISSING_MESSAGE` errors in production containers.

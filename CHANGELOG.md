@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.1.2] — 2026-06-28
+
+### 🎉 New Product Launch: RMS Mail Mono Pro Edition
+The **Mono Pro Edition** has been officially released as a standalone commercial product. It combines the single-tenant isolation model of Mono with the enterprise-grade infrastructure of Unified (PostgreSQL, Redis, Asynq).
+
+- **Standalone Product Architecture**: Fully separated from the Unified Edition with dynamic database isolation (`geomail_mp` and Redis index `1`) to prevent cross-contamination.
+- **Licensing & Administrator Control**: Enforced rigorous limits for unactivated instances. Unactivated Mono Pro instances are strictly locked to a single administrator account until a valid commercial license is provided.
+- **Admin Panel Separation**: The Admin Panel is now a dedicated, independent interface (`/admin`) accessible only to users with the `is_admin` flag, providing a foundation for advanced team, security, and license management.
+- **Dedicated Deployment Pipeline**: Released standalone build, run, and publish scripts (`run-mp.sh`, `beta-mp.sh`, `bp-mp.sh`) and docker-compose configurations specifically tailored for the Mono Pro lifecycle.
+
 ## [3.1.1] — 2026-06-27
 
 ### Backend Architecture Refactoring — SOLID / DRY / KISS / YAGNI

@@ -20,7 +20,8 @@
 <p align="center">
   <b>High-performance self-hosted email built for large-scale, multi-account workflows.</b><br>
   Built for developers, operators, and power users managing real-world workloads at scale.<br>
-  <i>Optional AI integrations available, because modern email outgrew traditional webmail clones years ago.</i>
+  <i>Optional AI integrations available, because modern email outgrew traditional webmail clones years ago.</i><br>
+  <b>Designed with a simple philosophy: predictable performance, minimal resource usage, and no unnecessary complexity.</b>
 </p>
 
 ---
@@ -38,38 +39,25 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable / Production-Ready (**v3.1.0**, 2026-06-26)
-- Unified edition: Stable / Production-Ready (**v3.1.0**, 2026-06-26)
-- Mono Pro edition: Planned
+- Mono edition: Stable (v3.1.2)
+- Unified edition: Stable (v3.1.2)
+- Mono Pro edition: Stable (v3.1.2)
 - Teams edition: Planned
 
-The project currently prioritizes:
+Current development priorities:
 - core stability & zero-overhead resource usage
 - multi-gigabyte mailbox performance & chunk-based fetching
 - fast search and low-latency mailbox operations
 - infrastructure reliability & session state persistence
 - workflow ergonomics
 
-Documentation, walkthrough videos, and deployment guides are being expanded. Production HTTPS / reverse-proxy setup: **[reverse-proxy.md](./reverse-proxy.md)**. Full technical history: **[CHANGELOG.md](./CHANGELOG.md)**.
+Documentation, walkthrough videos, and deployment guides are continuously expanding.
 
-**Shipped since v3.0.4 (highlights):**
-- **Email body text selection fix (v3.0.9)** — removed `pointer-events-none` from iframe; complex HTML emails fully selectable. Links open in new tabs, standalone images show lightbox.
-- **SSE `email_updated` payload (v3.0.9)** — all mutation handlers now broadcast actual field values (`is_read`, `is_flagged`, `is_pinned`, `is_muted`, `folder_id`, `snoozed`) instead of just `{email_id, account_id}`.
-- **IMAP multi-client parity** — `\Seen`, `\Flagged`, and `\Answered` sync inbound (~30 s) and outbound (batched `STORE`); replies mark `\Answered` on the server.
-- **Streaming IMAP ingest** — `io.Reader` pipeline with O(1) memory per folder; bodies ≤1 MiB parsed in RAM (no sync_queue round-trip on initial fetch).
-- **Real-time inbox** — atomic list + counter refresh over SSE; `new-email` and bulk events keep sidebar badges aligned with the open list.
-- **AI category taxonomy** — admin-configurable categories with auto-read / auto-move rules after AI tagging.
-- **Auto-Draft** — AI-generated reply drafts with in-viewer banner (UIDPLUS + SSE).
-- **Performance core** — keyset pagination, denormalized `unread_count`, `smart_category` column, dual PostgreSQL pools (sync vs HTTP), LibSQL WAL on Mono.
-- **PostgreSQL production tuning (v3.1.0)** — connection pool capped at `min(20, CPU*4)` for Docker-friendly RAM usage; `ANALYZE emails` after bulk sync prevents Seq Scan on freshly-ingested mailboxes; covering index `(folder_id, is_read, is_muted, is_pinned DESC, date_sent DESC, id DESC)` eliminates sort for filtered reads; BRIN index on `date_sent` for compact time-series aggregations; `autovacuum_vacuum_insert_scale_factor = 0.05` for append-heavy workloads.
-- **Email HTML4→CSS3 centering fix (v3.1.0)** — `normalizeEmailHTML` now emits `-webkit-center`/`-moz-center` for `div`/`td`/`th` with `align="center"`; fixes left-aligned content blocks and broken button cells in marketing emails (Fix Price, NB, GPB, Glassdoor).
-- **Backend architecture refactoring (v3.1.1)** — SOLID/DRY/KISS/YAGNI: ISP (7 segregated interfaces), SRP (storage split to 9 files per database), DIP (CASStore/AIProvider interfaces in sync), OCP (email action registry), DRY (−250 duplicate lines).
-- **GlitchTip / Sentry error monitoring (v3.1.1)** — optional zero-overhead integration: `SENTRY_DSN` env var enables both backend (`internal/sentry/`) and frontend (`@sentry/nextjs`, `error.tsx` + `global-error.tsx`); automatic `sentry-trace` header propagation links frontend errors with backend traces.
-- **Security & integrations** — structured webhook payloads + HMAC, MCP keys scoped per account, JWT `?token=` rejected on API routes, AI/search rate limits.
-- **Docker Hub** — single repository `maxramas/rms-mail` with edition tags (`m-latest`, `m-ui-latest`, `u-latest`, …).
-- **Production proxy (v3.0.7)** — Mono serves public traffic on **`:3000` only**; Next.js rewrites `/api`, `/mcp`, `/internal` to the backend.
-- **IMAP multi-account Gmail (v3.0.7)** — dial-only per-host cap; OAuth errors (`invalid_grant`) surfaced in account sync status.
-- **Camo & newsletter rendering (v3.0.8)** — marketing image URL repair, external CSS in email iframe, About shows update channel (Stable/Beta/Alpha).
+Production HTTPS / reverse-proxy setup:
+**[reverse-proxy.md](./reverse-proxy.md)**
+
+Full technical history:
+**[CHANGELOG.md](./CHANGELOG.md)**
 
 ---
 
@@ -153,6 +141,14 @@ Unlike traditional IMAP clients: search is locally indexed using native DB engin
 **Result:** instant search, smooth scrolling, no IMAP `SEARCH` freezes, and bulk operations executed instantly on huge data sets.
 
 **Multi-client parity:** read, starred, and answered states reconcile with Gmail, Apple Mail, and any other IMAP client — changes propagate in both directions without stale UI.
+
+### Why Go + Next.js?
+
+Go provides predictable memory usage, true concurrency, and low operational overhead.
+
+Next.js delivers a modern browser UI while keeping deployment straightforward.
+
+The combination allows RMS Mail to scale from a Raspberry Pi running Mono to enterprise PostgreSQL deployments without changing the application model.
 
 ### 🤖 AI Is Native — Not Bolted On
 AI is integrated directly into the Web UI, Telegram, MCP, and IDE workflows. The AI can:
@@ -251,15 +247,17 @@ Especially people who:
 | Edition | Status | Purpose |
 | :--- | :--- | :--- |
 | **Mono** | **Stable** | Multi-user deployment with strict 1:1 user-to-mailbox isolation (SQLite). |
-| **Mono Pro** | **Planned** | Mono product model on enterprise infrastructure (PostgreSQL + Redis + async workers). |
-| **Unified** | **Released** | Multi-account workspace with unified inboxes (PostgreSQL + Redis). |
+| **Mono Pro** | **Stable** | Mono product model on enterprise infrastructure (PostgreSQL + Redis + async workers). |
+| **Unified** | **Stable** | Multi-account workspace with unified inboxes (PostgreSQL + Redis). |
 | **Teams** | **Planned** | Unified workspace plus shared-mailbox collaboration & helpdesk workflows. |
 
-### Mono
+### Mono (Completely Free)
 > **One mailbox. Zero infrastructure complexity.**
 
 A multi-user deployment enforcing strict 1:1 mapping between a user profile and a single isolated mailbox. Mono intentionally avoids infrastructure complexity: no PostgreSQL, no Redis, no Kubernetes, no external dependencies.
 Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on **LibSQL/SQLite** (WAL, `busy_timeout`) with a single backend binary plus Next.js UI container.
+
+Designed for people who want modern email without operating enterprise infrastructure.
 
 **Docker images:** `maxramas/rms-mail:m-latest` (API) + `maxramas/rms-mail:m-ui-latest` (UI) — see Quick Start for compose setup.
 
@@ -300,7 +298,7 @@ Replaces Roundcube/SnappyMail and outdated self-hosted webmail stacks. Runs on *
 
 ---
 
-### Mono Pro
+### Mono Pro (Paid)
 > **Mono isolation. Enterprise infrastructure.**
 
 Keeps the **Mono product model**: each user profile maps to **one mailbox**, with no unified multi-account inbox and no cross-account project groups. Swaps SQLite for the **Unified enterprise stack** — PostgreSQL, Redis (AOF persistence), and Asynq-backed async workers (Telegram, avatars, webhooks, scheduled send).
@@ -311,14 +309,13 @@ Keeps the **Mono product model**: each user profile maps to **one mailbox**, wit
 * hash-partitioned email storage (PostgreSQL)
 * persistent Undo Send & webhook retry queues (Redis ZSET / Asynq)
 * OAuth 2.0 application layer (BYOA)
-* license enforcement with live backend limits
+* strict unactivated limit (1 admin account) with license enforcement
 * horizontal-ready job queues (same async foundation as Unified)
-
-*(Mono Pro is on the roadmap; contact us if you need early access.)*
+* dedicated build and local-testing environments (`run-mp.sh`, `beta-mp.sh`, `bp-mp.sh`)
 
 ---
 
-### Unified
+### Unified (Freemium)
 > **All your inboxes. One workspace.**
 
 Designed for users managing many inboxes, client accounts, infrastructure mail, support-heavy workflows, and personal + business communication.
@@ -405,10 +402,12 @@ Extends **Unified** (multi-account workspace **and** PostgreSQL + Redis + async 
                          │
           ┌──────────────┼──────────────┐
           ▼              ▼              ▼
-     ┌─────────┐   ┌──────────┐   ┌─────────┐
-     │ SQLite  │   │PostgreSQL│   │  Redis  │
-     │ (Mono)  │   │(Unified) │   │(Unified)│
-     └─────────┘   └──────────┘   └─────────┘
+     ┌─────────┐   ┌──────────┐   ┌──────────┐
+     │ SQLite  │   │PostgreSQL│   │  Redis   │
+     │ (Mono)  │   │(U, MP, T)│   │(U, MP, T)│
+     └─────────┘   └─────┬────┘   └────┬─────┘
+                         │             │
+                         └────Asynq────┘
 
 ```
 
@@ -458,7 +457,7 @@ RMS Mail does not rely on slow IMAP search or memory-heavy external indexing sid
 5. PostgreSQL production tuning (v3.1.0): covering index `(folder_id, is_read, is_muted, is_pinned DESC, date_sent DESC, id DESC)` eliminates sort on filtered reads; BRIN index on `date_sent` for compact time-series aggregations; connection pool `min(20, CPU*4)` prevents OOM in Docker; `ANALYZE emails` after bulk sync prevents Seq Scan; `autovacuum_vacuum_insert_scale_factor = 0.05` triggers vacuum promptly on insert-heavy workloads.
 6. Real-time UI virtualization (TanStack Virtual + `measureElement`).
 
-**Result:** sub-100ms text search, instant filter counting, fast bulk operations on six-figure mailboxes.
+**Result:** typically sub-100 ms text search, instant filter counting, fast bulk operations on six-figure mailboxes.
 
 ---
 
@@ -570,6 +569,36 @@ docker compose up -d
 Once started, open your browser and navigate to:
 👉 `http://localhost:3000`
 
+### Mono Pro
+
+```bash
+# 1. Clone the repository and navigate to the project directory
+git clone https://github.com/max-ramas/rms-mail-public.git
+cd rms-mail-public
+
+# 2. Set up your environment variables
+cp .env-mp.example .env
+
+# 3. Configure required variables inside the .env file:
+# - `ADMIN_EMAIL` (Critical: The only account allowed to log in before license activation)
+# - `POSTGRES_PASSWORD` (To generate a secure random 32-byte hex key, run: openssl rand -hex 16)
+# - `REDIS_PASSWORD` (To generate a secure random 32-byte hex key, run: openssl rand -hex 16)
+# - `ENCRYPTION_KEYS` or `ENCRYPTION_KEY`(To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `JWT_SECRET` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# - `CAMO_HMAC_KEY` (To generate a secure random 32-byte hex key, run: openssl rand -hex 32)
+# Also add ALLOWED_ORIGINS and FRONTEND_URL (your domain name)
+
+# 4. Copy the Mono Pro-specific compose configuration
+cp docker-compose-mp.yml docker-compose.yml
+
+# 5. Fire it up!
+docker compose up -d
+
+# Images: maxramas/rms-mail:mp-latest + mp-ui-latest
+```
+Once started, open your browser and navigate to:
+👉 `http://localhost:3000`
+
 ---
 
 ## 🔒 Production (HTTPS / Reverse Proxy)
@@ -657,11 +686,28 @@ RMS Mail is built around several core ideas:
 
 This project is heavily shaped by support workflows, operational reality, multi-account overload, browser-first workflows, AI-assisted productivity, and real infrastructure constraints.
 
+Good software should remain fast as data grows, not only on day one.
+
+---
+
+## Design Principles
+
+RMS Mail intentionally avoids unnecessary abstractions.
+
+Every subsystem is designed around a few engineering principles:
+
+* predictable latency
+* bounded memory usage
+* streaming over buffering
+* native database capabilities instead of external services
+* minimal infrastructure
+* backwards-compatible evolution
+
 ---
 
 ## 🗺️ Roadmap
 
-**Current release: v3.1.1 (2026-06-27)** — see [CHANGELOG.md](./CHANGELOG.md) for the full history.
+**Current release: v3.1.2 (2026-06-28)** — see [CHANGELOG.md](./CHANGELOG.md) for the full history.
 
 **Recently shipped:**
 * **Docker production i18n fix (v3.1.0)** — standalone Next.js builds now correctly bundle and serve all 45 translation namespaces; resolved `MISSING_MESSAGE` errors in production containers.
@@ -674,11 +720,12 @@ This project is heavily shaped by support workflows, operational reality, multi-
 * IMAP multi-account Gmail: dial-only connection cap, OAuth `invalid_grant` surfacing (3.0.7)
 * Camo proxy + newsletter CSS in email iframe; About update channel badge (3.0.8)
 * Email body text selection fix; SSE `email_updated` payload with real status fields; `is_pinned`/`is_muted` SSE sync (3.0.9)
+* **Mono Pro** edition — Mono isolation on PostgreSQL + Redis + async
 
 Current priorities:
 
-* **Mono Pro** edition — Mono isolation on PostgreSQL + Redis + async
 * **Teams** edition launch — collaboration layer on top of Unified
+* **Mono Pro**/**Teams** edition ecosystem
 * onboarding simplification
 * deeper IDE integrations
 * more automation workflows

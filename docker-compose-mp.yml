@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: rms-mail-pg
+    networks:
+      - rms-mail
+    environment:
+      POSTGRES_DB: ${PG_DB:-rms-mail}
+      POSTGRES_USER: ${PG_USER:-user}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-change_me_in_production}
+    ports:
+      - "${PG_PORT:-5437}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  redis:
+    image: redis:8-alpine
+    container_name: rms-mail-redis
+    networks:
+      - rms-mail
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-devpassword}
+    ports:
+      - "${REDIS_PORT:-6387}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rms-mail-api
+    networks:
+      - rms-mail
+    ports:
+      - "${API_PORT:-8087}:8081"
+    environment:
+      DATABASE_URL: postgres://${PG_USER:-user}:${PG_PASSWORD:-password}@rms-mail-pg:5432/${PG_DB:-geomail_mp}?sslmode=prefer
+      REDIS_URL: redis://:${REDIS_PASSWORD:-devpassword}@rms-mail-redis:6379
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3500}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3500}
+      PORT: "8081"
+      EDITION: "mono_pro"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-strongpassword123}
+      # Sentry / GlitchTip error monitoring (optional)
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      # Optional mail server overrides (see .env.example):
+      # RMS_MAIL_HOST: mail.example.com    # M-version: override auto-detected mail server
+      # RMS_IMAP_HOST: imap.example.com    # Override IMAP host
+      # RMS_SMTP_HOST: smtp.example.com    # Override SMTP host
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - storage:/app/storage
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:
+
+networks:
+  rms-mail:
+    name: rms-mail
+    external: false

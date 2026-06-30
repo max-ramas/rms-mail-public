@@ -14,7 +14,6 @@
   <img src="https://img.shields.io/badge/docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/self--hosted-privacy--first-6366f1?style=for-the-badge" alt="Privacy First">
   <img src="https://img.shields.io/badge/45_languages-i18n-6366f1?style=for-the-badge" alt="45 Languages">
-  <img src="https://img.shields.io/badge/license-AGPLv3-blue?style=for-the-badge" alt="AGPLv3">
 </p>
 
 <p align="center">
@@ -58,6 +57,16 @@ Production HTTPS / reverse-proxy setup:
 
 Full technical history:
 **[CHANGELOG.md](./CHANGELOG.md)**
+
+---
+
+## License & Source
+
+This repository contains deployment files (Docker Compose configs,
+environment examples, documentation) for running RMS Mail.
+
+The application source code is closed and not published in this
+or any public repository. Binaries are distributed as Docker images.
 
 ---
 

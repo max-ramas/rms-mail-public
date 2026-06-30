@@ -1,5 +1,62 @@
 # Changelog
 
+## [3.1.3] — 2026-07-01
+
+### Changed
+
+#### IMAP `\Seen` Flag — Bidirectional Sync
+The IMAP `\Seen` flag was completely ignored. Emails always inserted as `is_read=false`, and local read/unread changes never pushed to server.
+
+**IMAP → RMS**: `ProcessMessage` and `ProcessMessageToFolder` now parse `msg.Flags` and set `email.IsRead = true` when `\Seen` is present.
+**Atomic ON CONFLICT**: `CASE WHEN is_dirty_locally THEN emails.is_read ELSE EXCLUDED.is_read END` — local changes protected, server state respected.
+**RMS → IMAP**: `syncFlags()` in worker — queries `GetDirtyEmails` (LIMIT 500), groups by read/unread, sends batched IMAP `STORE +FLAGS/-FLAGS \Seen` (200 UIDs/batch). `ClearDirtyFlag` resets after success.
+
+#### Bulk-by-Filter — Folder Name → UUID Resolution
+`perAccountFolder = "INBOX"` was passed as folder NAME to `buildFilterWhere` which compared it against `folder_id` (UUID column) for non-unified accounts. Result: 0 affected rows, operation appeared successful but did nothing.
+
+**Fixed**: Multi-account and single-account paths in `bulkActionByFilter` + `runBulkFilterOp` now resolve folder names to UUIDs via `GetFolders` for each account before passing to filter-based operations.
+
+### Fixed
+
+#### Login — First Attempt Kicked Out
+AuthGuard `GET /api/auth/verify` failed on first navigation after login — token was in localStorage but verify returned 401. Race condition between Next.js client-side navigation and axios interceptor picking up the token.
+
+**Fixed**: `AuthGuard` now retries verify once after 500ms delay on 401 before redirecting to login.
+
+#### Email Viewer + List Flicker (~3s after load)
+SSE delivered queued events on initial connection, triggering `scheduleListRefresh()` and `invalidateQueries(["email", id])`. Both email list and viewer refetched — data unchanged but React re-rendered.
+
+**Fixed**: 5-second warmup window via `warmupUntil` ref — `scheduleListRefresh` and `refreshListNow` skip SSE-triggered refreshes for first 5 seconds after mount. `useEmail` query: removed `placeholderData: keepPreviousData`, added `refetchOnMount: false`, raised `staleTime: 60_000`.
+
+#### Group Color Missing for Long Names
+Flex container `overflow-hidden` + long group name without `truncate` → color dot pushed outside visible area and clipped.
+
+**Fixed**: `shrink-0` on arrow/dot/count, `min-w-0 truncate` on name.
+
+#### GetGroups — Correlated Subquery on Production
+Correlated subquery per group scanned `emails JOIN folders JOIN project_group_accounts WHERE group_id = pg.id` — O(N×M) where N=groups, M=250K emails. Instant on local (50 emails), 30+ seconds on production.
+
+**Fixed**: Replaced with CTE `WITH inbox_unread AS (...)` filtering to ~500 rows first, then `LEFT JOIN` with groups. Single table scan.
+
+#### `shiftPGPlaceholders` — Parameter Corruption
+String replacement `$10 → $11` then `$1 → $2` in `$11` → `$21`. Intermediate marker pattern (`__PGH__N__`) eliminates double-replacement.
+
+#### Bulk-by-Filter — Snoozed Emails Counted in Unified
+`buildFilterWhere` unified subquery missing `snooze_until` filter — count included snoozed emails, list excluded them → mismatch.
+
+**Fixed**: `AND (e2.snooze_until IS NULL OR e2.snooze_until <= NOW())` added to unified subquery in both SQLite and PostgreSQL.
+
+#### Sync Worker — 250K Object Memory Accumulation
+`messages = append(messages, batchMsgs...)` in batching loop — dead code (never read after loop, `return nil` before access). Held 250K `FetchMessageBuffer` objects during full sync.
+
+**Fixed**: removed the append.
+
+### Added
+
+- **`GetDirtyEmails`** / **`ClearDirtyFlag`**: store methods for `\Seen` flag sync
+- **`SyncStore`**: both methods added to sync package interface
+- **AuthGuard retry**: visual feedback during token verification grace period
+
 ## [3.1.2] — 2026-06-29
 
 ### 🎉 New Product Launch: RMS Mail Mono Pro Edition
@@ -43,7 +100,6 @@ The **Mono Pro Edition** has been officially released as a standalone commercial
 - **README Feature Matrix**: Removed OAuth 2.0 from Mono Pro column (OAuth is Unified/Teams only).
 - **Dead code cleanup**: Removed `patch_auth.go` (orphaned test file at project root).
 - **Edition guard hygiene**: `HandleGetMe` no longer calls `UpsertUser` / `GetUserByEmail` in Mono edition (unnecessary — all Mono users are admin). `last_seen` update restricted to MP/T. SQLite `UpdateAccountTimestamp` reverted to `default: return nil` for unused fields.
-
 ## [3.1.1] — 2026-06-27
 
 ### Backend Architecture Refactoring — SOLID / DRY / KISS / YAGNI

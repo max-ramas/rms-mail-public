@@ -38,9 +38,9 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable (v3.1.2)
-- Unified edition: Stable (v3.1.2)
-- Mono Pro edition: Stable (v3.1.2)
+- Mono edition: Stable (v3.1.3)
+- Unified edition: Stable (v3.1.3)
+- Mono Pro edition: Stable (v3.1.3)
 - Teams edition: Planned
 
 Current development priorities:

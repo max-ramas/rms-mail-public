@@ -308,7 +308,6 @@ Keeps the **Mono product model**: each user profile maps to **one mailbox**, wit
 **Everything from Mono, on PostgreSQL + Redis, plus:**
 * hash-partitioned email storage (PostgreSQL)
 * persistent Undo Send & webhook retry queues (Redis ZSET / Asynq)
-* OAuth 2.0 application layer (BYOA)
 * strict unactivated limit (1 admin account) with license enforcement
 * horizontal-ready job queues (same async foundation as Unified)
 * dedicated build and local-testing environments (`run-mp.sh`, `beta-mp.sh`, `bp-mp.sh`)
@@ -442,8 +441,8 @@ RMS Mail does not rely on slow IMAP search or memory-heavy external indexing sid
 
 ```
 ┌─────────┐     ┌────────────────────────┐     ┌───────────────────────────────┐     ┌─────────┐
-│  IMAP   │ ──▶ │  SQLite FTS5 (Mono)    │ ──▶ │  Go Memory Pre-parsing        │ ──▶ │   UI    │
-│ Server  │     │  Postgres GIN (Unified)│     │  zstd Raw Payload Compression │     │ (React) │
+│  IMAP   │ ──▶ │   SQLite FTS5 (Mono)   │ ──▶ │  Go Memory Pre-parsing        │ ──▶ │   UI    │
+│ Server  │     │ Postgres GIN (U, MP, T)│     │  zstd Raw Payload Compression │     │ (React) │
 └─────────┘     └────────────────────────┘     └───────────────────────────────┘     └─────────┘
 
 ```
@@ -663,7 +662,7 @@ proxy_read_timeout 86400s;
 | Project Groups Isolation | — | — | ✅ | ✅ |
 | PostgreSQL + Redis Infrastructure | — | ✅ | ✅ | ✅ |
 | Asynq Async Workers | — | ✅ | ✅ | ✅ |
-| OAuth 2.0 Applications (BYOA) | — | ✅ | ✅ | ✅ |
+| OAuth 2.0 Applications (BYOA) | — | — | ✅ | ✅ |
 | License Enforcement (live limits) | — | — | ✅ | ✅ |
 | Shared Mailboxes | — | — | — | 🚧 |
 | Assignments Workflow | — | — | — | 🚧 |
@@ -707,7 +706,7 @@ Every subsystem is designed around a few engineering principles:
 
 ## 🗺️ Roadmap
 
-**Current release: v3.1.2 (2026-06-28)** — see [CHANGELOG.md](./CHANGELOG.md) for the full history.
+**Current release: v3.1.2 (2026-06-29)** — see [CHANGELOG.md](./CHANGELOG.md) for the full history.
 
 **Recently shipped:**
 * **Docker production i18n fix (v3.1.0)** — standalone Next.js builds now correctly bundle and serve all 45 translation namespaces; resolved `MISSING_MESSAGE` errors in production containers.

@@ -10,7 +10,7 @@
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: rms-mail-pg
+    container_name: rms-mail-pg-u
     restart: unless-stopped
     networks:
       - rms-mail
@@ -39,7 +39,7 @@ services:
 
   redis:
     image: redis:8-alpine
-    container_name: rms-mail-redis
+    container_name: rms-mail-redis-u
     restart: unless-stopped
     networks:
       - rms-mail
@@ -55,7 +55,7 @@ services:
 
   backend:
     image: maxramas/rms-mail:u-latest
-    container_name: rms-mail-api
+    container_name: rms-mail-api-u
     restart: unless-stopped
     networks:
       - rms-mail
@@ -66,8 +66,8 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-rmsmail}:${POSTGRES_PASSWORD}@rms-mail-pg:5432/${POSTGRES_DB:-rms-mail}?sslmode=prefer
-      REDIS_URL: redis://:${REDIS_PASSWORD}@rms-mail-redis:6379
+      DATABASE_URL: postgres://${POSTGRES_USER:-rmsmail}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rms-mail}?sslmode=prefer
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       JWT_SECRET: ${JWT_SECRET}
@@ -119,7 +119,7 @@ services:
 
   frontend:
     image: maxramas/rms-mail:u-ui-latest
-    container_name: rms-mail-ui
+    container_name: rms-mail-ui-u
     restart: unless-stopped
     networks:
       - rms-mail
@@ -137,7 +137,7 @@ services:
 
 networks:
   rms-mail:
-    name: rms-mail
+    name: rms-mail-u
     driver: bridge
 
 volumes:

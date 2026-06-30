@@ -1,74 +1,144 @@
+# =============================================================================
+# RMS Mail — Mono Pro Edition (PostgreSQL + Redis, 1:1 user-mailbox)
+# =============================================================================
+# Usage:
+#   cp .env-mp.example .env
+#   nano .env  — fill in REQUIRED values
+#   docker compose up -d
+# =============================================================================
+
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: rms-mail-pg
+    container_name: rms-mail-pg-mp
+    restart: unless-stopped
     networks:
       - rms-mail
     environment:
-      POSTGRES_DB: ${PG_DB:-rms-mail}
-      POSTGRES_USER: ${PG_USER:-user}
-      POSTGRES_PASSWORD: ${PG_PASSWORD:-change_me_in_production}
-    ports:
-      - "${PG_PORT:-5437}:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-rmsmail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-geomail_mp}
+    command: >
+      -c shared_buffers=512MB
+      -c effective_cache_size=2GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=256MB
+      -c max_connections=50
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./pgdata_mp:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-rmsmail} -d $${POSTGRES_DB:-geomail_mp}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
     image: redis:8-alpine
-    container_name: rms-mail-redis
+    container_name: rms-mail-redis-mp
+    restart: unless-stopped
     networks:
       - rms-mail
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-devpassword}
-    ports:
-      - "${REDIS_PORT:-6387}:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     volumes:
-      - redisdata:/data
+      - ./redisdata_mp:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 5s
 
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: rms-mail-api
+    image: maxramas/rms-mail:mp-latest
+    container_name: rms-mail-api-mp
+    restart: unless-stopped
     networks:
       - rms-mail
     ports:
-      - "${API_PORT:-8087}:8081"
+      - "${PORT:-8080}:8080"
+    user: "0:0"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgres://${PG_USER:-user}:${PG_PASSWORD:-password}@rms-mail-pg:5432/${PG_DB:-geomail_mp}?sslmode=prefer
-      REDIS_URL: redis://:${REDIS_PASSWORD:-devpassword}@rms-mail-redis:6379
+      DATABASE_URL: postgres://${POSTGRES_USER:-rmsmail}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-geomail_mp}?sslmode=prefer
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
-      JWT_SECRET: ${JWT_SECRET:-}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3500}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3500}
-      PORT: "8081"
+      JWT_SECRET: ${JWT_SECRET}
+      CAMO_HMAC_KEY: ${CAMO_HMAC_KEY:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      MCP_API_URL: ${MCP_API_URL:-}
+      APP_ENV: ${APP_ENV:-production}
+      STORAGE_ROOT: /app/storage
+      PORT: "8080"
       EDITION: "mono_pro"
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-strongpassword123}
-      # Sentry / GlitchTip error monitoring (optional)
+      PG_MAX_CONNS: ${PG_MAX_CONNS:-20}
+      PG_SYNC_MAX_CONNS: ${PG_SYNC_MAX_CONNS:-}
+      PG_STATEMENT_TIMEOUT: ${PG_STATEMENT_TIMEOUT:-}
+      SYNC_BATCH_DELAY_MS: ${SYNC_BATCH_DELAY_MS:-2000}
+      SYNC_MAX_WORKERS: ${SYNC_MAX_WORKERS:-}
+      IMAP_PER_HOST_CONN: ${IMAP_PER_HOST_CONN:-}
+      ASYNC_CONCURRENCY: ${ASYNC_CONCURRENCY:-}
+      TRUSTED_MX_DOMAINS: ${TRUSTED_MX_DOMAINS:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
-      # Optional mail server overrides (see .env.example):
-      # RMS_MAIL_HOST: mail.example.com    # M-version: override auto-detected mail server
-      # RMS_IMAP_HOST: imap.example.com    # Override IMAP host
-      # RMS_SMTP_HOST: smtp.example.com    # Override SMTP host
+      TG_ENVONLY: ${TG_ENVONLY:-}
+      LLM_ENVONLY: ${LLM_ENVONLY:-}
+      AI_DISABLE: ${AI_DISABLE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
-      - storage:/app/storage
+      - ./storage_mp:/app/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://localhost:${PORT:-8080}/api/health",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
-volumes:
-  pgdata:
-  redisdata:
-  storage:
+  frontend:
+    image: maxramas/rms-mail:mp-ui-latest
+    container_name: rms-mail-ui-mp
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    ports:
+      - "${UI_PORT:-3000}:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - API_URL=http://backend:8080
+      - INTERNAL_URL=http://backend:8080
+      - NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN:-}
+      - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
+    depends_on:
+      - backend
 
 networks:
   rms-mail:
-    name: rms-mail
-    external: false
+    name: rms-mail-mp
+    driver: bridge
+
+volumes:
+  redisdata:

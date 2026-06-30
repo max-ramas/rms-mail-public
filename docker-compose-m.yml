@@ -15,7 +15,7 @@ services:
     #   dockerfile: Dockerfile
     #   args:
     #     EDITION: mono
-    container_name: rms-mail-mono
+    container_name: rms-mail-api-m
     restart: unless-stopped
     networks:
       - rms-mail
@@ -82,7 +82,7 @@ services:
 
   frontend:
     image: maxramas/rms-mail:m-ui-latest
-    container_name: rms-mail-ui
+    container_name: rms-mail-ui-m
     restart: unless-stopped
     networks:
       - rms-mail
@@ -100,5 +100,5 @@ services:
 
 networks:
   rms-mail:
-    name: rms-mail
+    name: rms-mail-m
     driver: bridge

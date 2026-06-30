@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.1.2] — 2026-06-28
+## [3.1.2] — 2026-06-29
 
 ### 🎉 New Product Launch: RMS Mail Mono Pro Edition
 The **Mono Pro Edition** has been officially released as a standalone commercial product. It combines the single-tenant isolation model of Mono with the enterprise-grade infrastructure of Unified (PostgreSQL, Redis, Asynq).
@@ -9,6 +9,40 @@ The **Mono Pro Edition** has been officially released as a standalone commercial
 - **Licensing & Administrator Control**: Enforced rigorous limits for unactivated instances. Unactivated Mono Pro instances are strictly locked to a single administrator account until a valid commercial license is provided.
 - **Admin Panel Separation**: The Admin Panel is now a dedicated, independent interface (`/admin`) accessible only to users with the `is_admin` flag, providing a foundation for advanced team, security, and license management.
 - **Dedicated Deployment Pipeline**: Released standalone build, run, and publish scripts (`run-mp.sh`, `beta-mp.sh`, `bp-mp.sh`) and docker-compose configurations specifically tailored for the Mono Pro lifecycle.
+
+### 🔐 Admin Panel — Edition Isolation
+- **`/api/admin/*` routes** now gated to Mono Pro and Teams only (`IsMonoPro() || IsTeams()`). Previously registered for all editions.
+- **Frontend guards**: Admin page redirects Mono and Unified away. Sidebar «Admin Panel» button hidden in M/U.
+
+### 👥 Admin Users Table — Role Column
+- **`AdminUser` struct** now includes `role` field (`admin` / `user`).
+- **`GetAdminUsers`** populates role from the `users` table via `GetUserByEmail`.
+- **`UpsertUser` + `GetUserByEmail`** added to `EntityStore` (postgres + sqlite).
+- **Login + `HandleGetMe`**: auto-create user record in `users` table with correct role on first activity.
+
+### 🕐 LAST SEEN AT — Real Login Time
+- **`GetAccounts()`** now includes `last_seen_at` in SELECT (was missing — always showed zero time).
+- **`HandleGetMe`** updates `last_seen_at = NOW()` on account (Mono Pro / Teams only).
+- **`UpdateAccountTimestamp`** extended with `"last_seen"` case (postgres).
+
+### 🔔 Notifications — Admin Only in Mono Pro
+- **`NotificationCenter`** in sidebar and About tab hidden for non-admin users in Mono Pro.
+- **Check-updates button** in About tab similarly restricted.
+
+### 🗑️ Bulk & Single Delete — Trash-Aware
+- **Emails already in Trash** → hard delete (`BulkDeleteEmails` / `DeleteEmail`).
+- **Emails not in Trash** → move to Trash (`BulkMoveAndEnqueue`).
+- Previously: delete from Trash was a silent no-op (move to Trash again).
+
+### 🐛 Bug Fixes
+- **FTS Email Search Optimization (All Editions)**: Fixed a critical issue where searching by email address (e.g., `test@example.com`) failed or returned no results. 
+  - In SQLite (Mono), special characters like `@` caused FTS5 syntax errors.
+  - In PostgreSQL (Unified & Mono Pro), email addresses were parsed as monolith `email` tokens, preventing partial substring matches.
+  - **Solution**: The FTS indexing and search queries now consistently sanitize and split email addresses by punctuation (`@`, `.`, `<`, `>`), ensuring robust, high-performance partial and exact matching across both database engines.
+- **BulkMoveAndEnqueue — INSERT column mismatch (PostgreSQL)**: `INSERT INTO imap_move_queue` had 8 columns but only 6 values — caused `SQLSTATE 42601` on every bulk delete/archive/move. Fixed by adding missing `retry_count` and `created_at` parameters.
+- **README Feature Matrix**: Removed OAuth 2.0 from Mono Pro column (OAuth is Unified/Teams only).
+- **Dead code cleanup**: Removed `patch_auth.go` (orphaned test file at project root).
+- **Edition guard hygiene**: `HandleGetMe` no longer calls `UpsertUser` / `GetUserByEmail` in Mono edition (unnecessary — all Mono users are admin). `last_seen` update restricted to MP/T. SQLite `UpdateAccountTimestamp` reverted to `default: return nil` for unused fields.
 
 ## [3.1.1] — 2026-06-27
 

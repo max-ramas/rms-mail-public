@@ -1,0 +1,104 @@
+# =============================================================================
+# RMS Mail — Mono Edition (Single-Account, SQLite, no PostgreSQL / Redis)
+# =============================================================================
+# Usage:
+#   cp .env-m.example .env
+#   docker compose -f docker-compose-m.yml up -d
+# =============================================================================
+
+services:
+  backend:
+    image: maxramas/rms-mail:m-latest
+    # For local development builds, replace the line above with:
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    #   args:
+    #     EDITION: mono
+    container_name: rms-mail-api-m
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    expose:
+      - "8080"
+    # Host publish disabled by default — API/MCP/SSE go through frontend :3000 rewrites.
+    # Uncomment for direct backend debugging only:
+    # ports:
+    #   - "${PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Optional mail server overrides (see .env-m.example):
+    #   RMS_MAIL_HOST=mail.example.com    # M-version: override auto-detected mail server
+    #   RMS_IMAP_HOST=imap.example.com    # Override IMAP host
+    #   RMS_SMTP_HOST=smtp.example.com    # Override SMTP host
+    # Run as non-root (UID 1000). For aaPanel/cPanel with userns-remap, set to "0:0" in .env override.
+    user: "0:0"
+    volumes:
+      - ./data:/app/data
+      - ./storage:/app/storage
+    env_file:
+      - .env
+    environment:
+      ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET}
+      CAMO_HMAC_KEY: ${CAMO_HMAC_KEY:-}
+      STORAGE_ROOT: /app/storage
+      APP_ENV: ${APP_ENV:-production}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      MCP_API_URL: ${MCP_API_URL:-}
+      IMAP_PER_HOST_CONN: ${IMAP_PER_HOST_CONN:-}
+      SYNC_MAX_WORKERS: ${SYNC_MAX_WORKERS:-}
+      SYNC_BATCH_DELAY_MS: ${SYNC_BATCH_DELAY_MS:-2000}
+      RMS_MAIL_HOST: ${RMS_MAIL_HOST:-}
+      RMS_IMAP_HOST: ${RMS_IMAP_HOST:-}
+      RMS_SMTP_HOST: ${RMS_SMTP_HOST:-}
+      TRUSTED_MX_DOMAINS: ${TRUSTED_MX_DOMAINS:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      TG_ENVONLY: ${TG_ENVONLY:-}
+      LLM_ENVONLY: ${LLM_ENVONLY:-}
+      AI_DISABLE: ${AI_DISABLE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      # LOG_LEVEL: info
+      # Opt-in: mount custom nginx config (when using external nginx/openresty)
+      # - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://localhost:${PORT:-8080}/api/health",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    image: maxramas/rms-mail:m-ui-latest
+    container_name: rms-mail-ui-m
+    restart: unless-stopped
+    networks:
+      - rms-mail
+    ports:
+      - "${UI_PORT:-3000}:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - API_URL=http://backend:8080
+      - INTERNAL_URL=http://backend:8080
+      - NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN:-}
+      - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
+    depends_on:
+      - backend
+
+networks:
+  rms-mail:
+    name: rms-mail-m
+    driver: bridge

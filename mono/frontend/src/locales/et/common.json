@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Klaviatuuri otseteed",
+    "next_email": "Järgmine e-kiri",
+    "prev_email": "Eelmine e-kiri",
+    "reply": "Vasta",
+    "new_email": "Uus e-kiri",
+    "delete": "Kustuta",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Abi",
+    "forward": "Edasta",
+    "archive": "Arhiveeri",
+    "search": "Otsi",
+    "escape": "Välju"
+  },
+  "errors": {
+    "imap_connection": "IMAP ühenduse viga: {error}",
+    "ai_failed": "AI viga: {error}"
+  },
+  "error_title": "Midagi läks valesti",
+  "unexpected_error": "Ootamatu viga",
+  "reload_page": "Laadi leht uuesti",
+  "loading": "Laadimine..."
+}

@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Klaviatura yorliqlari",
+    "next_email": "Keyingi xat",
+    "prev_email": "Oldingi xat",
+    "reply": "Javob berish",
+    "new_email": "Yangi xat",
+    "delete": "O'chirish",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Yordam",
+    "forward": "Qayta yuborish",
+    "archive": "Arxivlash",
+    "search": "Qidirish",
+    "escape": "Yopish"
+  },
+  "errors": {
+    "imap_connection": "IMAP ulanish xatosi: {error}",
+    "ai_failed": "AI xatosi: {error}"
+  },
+  "error_title": "Nimadir xato ketdi",
+  "unexpected_error": "Kutilmagan xato",
+  "reload_page": "Sahifani qayta yuklash",
+  "loading": "Yuklanmoqda..."
+}

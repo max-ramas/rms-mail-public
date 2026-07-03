@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Pintasan Keyboard",
+    "next_email": "Email berikutnya",
+    "prev_email": "Email sebelumnya",
+    "reply": "Balas",
+    "new_email": "Email baru",
+    "delete": "Hapus",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Bantuan",
+    "forward": "Teruskan",
+    "archive": "Arsipkan",
+    "search": "Cari",
+    "escape": "Keluar"
+  },
+  "errors": {
+    "imap_connection": "Kesalahan koneksi IMAP: {error}",
+    "ai_failed": "Kesalahan AI: {error}"
+  },
+  "error_title": "Terjadi kesalahan",
+  "unexpected_error": "Kesalahan tak terduga",
+  "reload_page": "Muat ulang halaman",
+  "loading": "Memuat..."
+}

@@ -1,0 +1,4 @@
+-- 008_contacts_b2b_fields.sql
+ALTER TABLE contacts ADD COLUMN company TEXT NOT NULL DEFAULT '';
+ALTER TABLE contacts ADD COLUMN position TEXT NOT NULL DEFAULT '';
+ALTER TABLE contacts ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';

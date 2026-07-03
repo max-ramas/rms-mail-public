@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Клавишни комбинации",
+    "next_email": "Следващ имейл",
+    "prev_email": "Предишен имейл",
+    "reply": "Отговор",
+    "new_email": "Нов имейл",
+    "delete": "Изтриване",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Помощ",
+    "forward": "Препращане",
+    "archive": "Архивиране",
+    "search": "Търсене",
+    "escape": "Изход"
+  },
+  "errors": {
+    "imap_connection": "Грешка при IMAP връзка: {error}",
+    "ai_failed": "AI грешка: {error}"
+  },
+  "error_title": "Нещо се обърка",
+  "unexpected_error": "Неочаквана грешка",
+  "reload_page": "Презареди страницата",
+  "loading": "Зареждане..."
+}

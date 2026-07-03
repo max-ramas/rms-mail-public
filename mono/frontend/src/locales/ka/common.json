@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "კლავიატურის მალსახმობები",
+    "next_email": "შემდეგი ელფოსტა",
+    "prev_email": "წინა ელფოსტა",
+    "reply": "პასუხი",
+    "new_email": "ახალი ელფოსტა",
+    "delete": "წაშლა",
+    "toggle_read": "წაკითხვის შეცვლა",
+    "select_all": "ყველას მონიშვნა",
+    "chat": "ჩატი AI-სთან",
+    "pin": "პინი",
+    "help": "დახმარება",
+    "forward": "გადაგზავნა",
+    "archive": "არქივაცია",
+    "search": "ძიება",
+    "escape": "გასვლა"
+  },
+  "errors": {
+    "imap_connection": "IMAP კავშირის შეცდომა: {error}",
+    "ai_failed": "AI შეცდომა: {error}"
+  },
+  "error_title": "რაღაც შეცდომა მოხდა",
+  "unexpected_error": "მოულოდნელი შეცდომა",
+  "reload_page": "გვერდის გადატვირთვა",
+  "loading": "იტვირთება..."
+}

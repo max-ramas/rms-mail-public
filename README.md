@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/self--hosted-privacy--first-6366f1?style=for-the-badge" alt="Privacy First">
   <img src="https://img.shields.io/badge/45_languages-i18n-6366f1?style=for-the-badge" alt="45 Languages">
+  <img src="https://img.shields.io/badge/license-AGPLv3-blue?style=for-the-badge" alt="AGPLv3">
 </p>
 
 <p align="center">
@@ -38,9 +39,9 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable (v3.1.3)
-- Unified edition: Stable (v3.1.3)
-- Mono Pro edition: Stable (v3.1.3)
+- Mono edition: Stable (v3.1.4)
+- Unified edition: Stable (v3.1.4)
+- Mono Pro edition: Stable (v3.1.4)
 - Teams edition: Planned
 
 Current development priorities:
@@ -62,11 +63,11 @@ Full technical history:
 
 ## License & Source
 
-This repository contains deployment files (Docker Compose configs,
-environment examples, documentation) for running RMS Mail.
+This repository is licensed under AGPLv3 and contains the full source code of the RMS Mail Mono edition.
 
-The application source code is closed and not published in this
-or any public repository. Binaries are distributed as Docker images.
+The Mono edition is fully open-source and self-hostable.
+
+Other editions (Unified, Mono Pro, Teams) are distributed as prebuilt Docker images and are not included in this repository.
 
 ---
 

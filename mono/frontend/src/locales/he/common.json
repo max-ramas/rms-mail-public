@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "קיצורי מקלדת",
+    "next_email": "דוא״ל הבא",
+    "prev_email": "דוא״ל קודם",
+    "reply": "השב",
+    "new_email": "דוא״ל חדש",
+    "delete": "מחק",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "עזרה",
+    "forward": "העבר",
+    "archive": "ארכוב",
+    "search": "חיפוש",
+    "escape": "צא"
+  },
+  "errors": {
+    "imap_connection": "שגיאת חיבור IMAP: {error}",
+    "ai_failed": "שגיאת AI: {error}"
+  },
+  "error_title": "משהו השתבש",
+  "unexpected_error": "שגיאה בלתי צפויה",
+  "reload_page": "טען דף מחדש",
+  "loading": "טוען..."
+}

@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Συντομεύσεις πληκτρολογίου",
+    "next_email": "Επόμενο email",
+    "prev_email": "Προηγούμενο email",
+    "reply": "Απάντηση",
+    "new_email": "Νέο email",
+    "delete": "Διαγραφή",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Βοήθεια",
+    "forward": "Προώθηση",
+    "archive": "Αρχειοθέτηση",
+    "search": "Αναζήτηση",
+    "escape": "Έξοδος"
+  },
+  "errors": {
+    "imap_connection": "Σφάλμα σύνδεσης IMAP: {error}",
+    "ai_failed": "Σφάλμα AI: {error}"
+  },
+  "error_title": "Κάτι πήγε στραβά",
+  "unexpected_error": "Απρόσμενο σφάλμα",
+  "reload_page": "Επαναφόρτωση σελίδας",
+  "loading": "Φόρτωση..."
+}

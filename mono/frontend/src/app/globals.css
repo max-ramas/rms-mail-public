@@ -1,0 +1,145 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --color-app-bg: var(--app-bg);
+    --color-sidebar-bg: var(--sidebar-bg);
+    --color-list-bg: var(--list-bg);
+    --color-card-bg: var(--card-bg);
+    --color-border-muted: var(--border-muted);
+    --color-text-main: var(--text-main);
+    --color-text-muted: var(--text-muted);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+}
+
+/* Светлая тема — слоёный контраст */
+:root {
+    --sidebar-bg: #ffffff;
+    --app-bg: #f2f2f4;
+    --list-bg: #ffffff;
+    --card-bg: #ffffff;
+    --border-muted: #d8d8dc;
+    --text-main: #242427;
+    --text-muted: #71717a;
+
+    --background: #ffffff;
+    --foreground: var(--text-main);
+    --card: var(--card-bg);
+    --card-foreground: var(--text-main);
+    --primary: #fbbf24;
+    --primary-foreground: #0f172a;
+    --secondary: #e3e3e6;
+    --secondary-foreground: #0f172a;
+    --muted: #e3e3e6;
+    --muted-foreground: var(--text-muted);
+    --accent: #e3e3e6;
+    --accent-foreground: #0f172a;
+    --border: var(--border-muted);
+    --input: var(--border-muted);
+    --ring: #a5a5ad;
+    --radius: 0.45rem;
+}
+
+/* Тёмная тема — слоёный контраст */
+.dark {
+    --sidebar-bg: #0b0f17;
+    --app-bg: #0f131a;
+    --list-bg: #131822;
+    --card-bg: #171e2c;
+    --border-muted: #222c3f;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+
+    --background: var(--app-bg);
+    --foreground: var(--text-main);
+    --card: var(--card-bg);
+    --card-foreground: var(--text-main);
+    --primary: #fbbf24;
+    --primary-foreground: #0f172a;
+    --secondary: #1e293b;
+    --secondary-foreground: #f1f5f9;
+    --muted: #1e293b;
+    --muted-foreground: var(--text-muted);
+    --accent: #1e293b;
+    --accent-foreground: #f1f5f9;
+    --border: var(--border-muted);
+    --input: var(--border-muted);
+    --ring: #475569;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-app-bg text-text-main;
+    }
+    html {
+        @apply font-sans;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background-color: var(--border-muted);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted);
+}
+
+@layer utilities {
+    .textarea-auto {
+        field-sizing: content;
+        min-height: 120px;
+    }
+    .rms-input {
+        @apply w-full rounded-md border bg-card-bg px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50;
+    }
+    .rms-select {
+        @apply h-9 rounded-md border bg-card-bg px-2 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+    }
+    .email-simple-content a[href],
+    .email-simple-content button,
+    .email-simple-content [role="button"] {
+        cursor: pointer;
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "کی بورڈ شارٹ کٹس",
+    "next_email": "اگلا ای میل",
+    "prev_email": "پچھلا ای میل",
+    "reply": "جواب دیں",
+    "new_email": "نیا ای میل",
+    "delete": "حذف کریں",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "مدد",
+    "forward": "آگے بھیجیں",
+    "archive": "آرکائیو کریں",
+    "search": "تلاش کریں",
+    "escape": "بند کریں"
+  },
+  "errors": {
+    "imap_connection": "IMAP کنکشن کی خرابی: {error}",
+    "ai_failed": "AI خرابی: {error}"
+  },
+  "error_title": "کچھ غلط ہو گیا",
+  "unexpected_error": "غیر متوقع خرابی",
+  "reload_page": "صفحہ دوبارہ لوڈ کریں",
+  "loading": "لوڈ ہو رہا ہے..."
+}

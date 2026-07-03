@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Klavye Kısayolları",
+    "next_email": "Sonraki e-posta",
+    "prev_email": "Önceki e-posta",
+    "reply": "Yanıtla",
+    "new_email": "Yeni e-posta",
+    "delete": "Sil",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Yardım",
+    "forward": "İlet",
+    "archive": "Arşivle",
+    "search": "Ara",
+    "escape": "Kapat"
+  },
+  "errors": {
+    "imap_connection": "IMAP bağlantı hatası: {error}",
+    "ai_failed": "AI hatası: {error}"
+  },
+  "error_title": "Bir şeyler yanlış gitti",
+  "unexpected_error": "Beklenmeyen hata",
+  "reload_page": "Sayfayı yenile",
+  "loading": "Yükleniyor..."
+}

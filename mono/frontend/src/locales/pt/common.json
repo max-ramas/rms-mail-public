@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Atalhos de teclado",
+    "next_email": "Próximo e-mail",
+    "prev_email": "E-mail anterior",
+    "reply": "Responder",
+    "new_email": "Novo e-mail",
+    "delete": "Excluir",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Ajuda",
+    "forward": "Encaminhar",
+    "archive": "Arquivar",
+    "search": "Pesquisar",
+    "escape": "Sair"
+  },
+  "errors": {
+    "imap_connection": "Erro de conexão IMAP: {error}",
+    "ai_failed": "Erro de IA: {error}"
+  },
+  "error_title": "Algo deu errado",
+  "unexpected_error": "Erro inesperado",
+  "reload_page": "Recarregar página",
+  "loading": "Carregando..."
+}

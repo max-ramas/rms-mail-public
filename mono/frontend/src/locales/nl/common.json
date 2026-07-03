@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Toetsenbordsnelkoppelingen",
+    "next_email": "Volgende e-mail",
+    "prev_email": "Vorige e-mail",
+    "reply": "Beantwoorden",
+    "new_email": "Nieuwe e-mail",
+    "delete": "Verwijderen",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Help",
+    "forward": "Doorsturen",
+    "archive": "Archiveren",
+    "search": "Zoeken",
+    "escape": "Sluiten"
+  },
+  "errors": {
+    "imap_connection": "IMAP verbindingsfout: {error}",
+    "ai_failed": "AI fout: {error}"
+  },
+  "error_title": "Er is iets misgegaan",
+  "unexpected_error": "Onverwachte fout",
+  "reload_page": "Pagina opnieuw laden",
+  "loading": "Laden..."
+}

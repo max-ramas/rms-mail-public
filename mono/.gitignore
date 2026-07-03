@@ -1,0 +1,34 @@
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Email storage
+backend/data/
+backend/storage/
+
+# Build artifacts
+backend/internal/sync/server
+*.test
+*.out
+*.exe
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/*.tsbuildinfo
+
+# Secrets
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log

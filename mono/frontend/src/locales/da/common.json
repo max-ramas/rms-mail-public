@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Tastaturgenveje",
+    "next_email": "Næste e-mail",
+    "prev_email": "Forrige e-mail",
+    "reply": "Svar",
+    "new_email": "Ny e-mail",
+    "delete": "Slet",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Hjælp",
+    "forward": "Videresend",
+    "archive": "Arkivér",
+    "search": "Søg",
+    "escape": "Luk"
+  },
+  "errors": {
+    "imap_connection": "IMAP forbindelsesfejl: {error}",
+    "ai_failed": "AI fejl: {error}"
+  },
+  "error_title": "Noget gik galt",
+  "unexpected_error": "Uventet fejl",
+  "reload_page": "Genindlæs side",
+  "loading": "Indlæser..."
+}

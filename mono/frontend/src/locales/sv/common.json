@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Tangentbordsgenvägar",
+    "next_email": "Nästa e-post",
+    "prev_email": "Föregående e-post",
+    "reply": "Svara",
+    "new_email": "Ny e-post",
+    "delete": "Ta bort",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Hjälp",
+    "forward": "Vidarebefordra",
+    "archive": "Arkivera",
+    "search": "Sök",
+    "escape": "Stäng"
+  },
+  "errors": {
+    "imap_connection": "IMAP anslutningsfel: {error}",
+    "ai_failed": "AI fel: {error}"
+  },
+  "error_title": "Något gick fel",
+  "unexpected_error": "Oväntat fel",
+  "reload_page": "Ladda om sidan",
+  "loading": "Laddar..."
+}

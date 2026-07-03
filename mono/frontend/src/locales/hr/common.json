@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Tipkovni prečaci",
+    "next_email": "Sljedeći e-mail",
+    "prev_email": "Prethodni e-mail",
+    "reply": "Odgovori",
+    "new_email": "Novi e-mail",
+    "delete": "Izbriši",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Pomoć",
+    "forward": "Proslijedi",
+    "archive": "Arhiviraj",
+    "search": "Traži",
+    "escape": "Izađi"
+  },
+  "errors": {
+    "imap_connection": "IMAP greška veze: {error}",
+    "ai_failed": "AI greška: {error}"
+  },
+  "error_title": "Nešto je pošlo po zlu",
+  "unexpected_error": "Neočekivana greška",
+  "reload_page": "Ponovo učitaj",
+  "loading": "Učitavanje..."
+}

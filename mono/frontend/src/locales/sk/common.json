@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Klávesové skratky",
+    "next_email": "Ďalší e-mail",
+    "prev_email": "Predchádzajúci e-mail",
+    "reply": "Odpovedať",
+    "new_email": "Nový e-mail",
+    "delete": "Zmazať",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Pomocník",
+    "forward": "Poslať ďalej",
+    "archive": "Archivovať",
+    "search": "Hľadať",
+    "escape": "Zavrieť"
+  },
+  "errors": {
+    "imap_connection": "Chyba IMAP pripojenia: {error}",
+    "ai_failed": "Chyba AI: {error}"
+  },
+  "error_title": "Niečo sa pokazilo",
+  "unexpected_error": "Neočakávaná chyba",
+  "reload_page": "Znova načítať",
+  "loading": "Načítava..."
+}

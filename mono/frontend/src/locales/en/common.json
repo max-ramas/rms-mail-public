@@ -1,0 +1,23 @@
+{
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "next_email": "Next email",
+    "prev_email": "Previous email",
+    "reply": "Reply",
+    "new_email": "New email",
+    "delete": "Delete",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Help"
+  },
+  "errors": {
+    "imap_connection": "IMAP connection error: {error}",
+    "ai_failed": "AI error: {error}"
+  },
+  "error_title": "Something went wrong",
+  "unexpected_error": "Unexpected error",
+  "reload_page": "Reload page",
+  "loading": "Loading..."
+}

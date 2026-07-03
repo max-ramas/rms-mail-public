@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Ստեղնաշարի դյուրանցումներ",
+    "next_email": "Հաջորդ նամակը",
+    "prev_email": "Նախորդ նամակը",
+    "reply": "Պատասխանել",
+    "new_email": "Նոր նամակ",
+    "delete": "Ջնջել",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Օգնություն",
+    "forward": "Փոխանցել",
+    "archive": "Արխիվացնել",
+    "search": "Որոնել",
+    "escape": "Փակել"
+  },
+  "errors": {
+    "imap_connection": "IMAP կապի սխալ: {error}",
+    "ai_failed": "AI սխալ: {error}"
+  },
+  "error_title": "Ինչ-որ բան սխալ գնաց",
+  "unexpected_error": "Անսպասելի սխալ",
+  "reload_page": "Վերաբեռնել էջը",
+  "loading": "Բեռնում..."
+}

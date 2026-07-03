@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Phím tắt",
+    "next_email": "Email tiếp theo",
+    "prev_email": "Email trước",
+    "reply": "Trả lời",
+    "new_email": "Email mới",
+    "delete": "Xóa",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Trợ giúp",
+    "forward": "Chuyển tiếp",
+    "archive": "Lưu trữ",
+    "search": "Tìm kiếm",
+    "escape": "Đóng"
+  },
+  "errors": {
+    "imap_connection": "Lỗi kết nối IMAP: {error}",
+    "ai_failed": "Lỗi AI: {error}"
+  },
+  "error_title": "Đã xảy ra lỗi",
+  "unexpected_error": "Lỗi không mong muốn",
+  "reload_page": "Tải lại trang",
+  "loading": "Đang tải..."
+}

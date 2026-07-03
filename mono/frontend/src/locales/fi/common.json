@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Pikanäppäimet",
+    "next_email": "Seuraava sähköposti",
+    "prev_email": "Edellinen sähköposti",
+    "reply": "Vastaa",
+    "new_email": "Uusi sähköposti",
+    "delete": "Poista",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Ohje",
+    "forward": "Välitä",
+    "archive": "Arkistoi",
+    "search": "Hae",
+    "escape": "Sulje"
+  },
+  "errors": {
+    "imap_connection": "IMAP-yhteysvirhe: {error}",
+    "ai_failed": "AI-virhe: {error}"
+  },
+  "error_title": "Jotain meni pieleen",
+  "unexpected_error": "Odottamaton virhe",
+  "reload_page": "Lataa sivu uudelleen",
+  "loading": "Ladataan..."
+}

@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Billentyűparancsok",
+    "next_email": "Következő e-mail",
+    "prev_email": "Előző e-mail",
+    "reply": "Válasz",
+    "new_email": "Új e-mail",
+    "delete": "Törlés",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Súgó",
+    "forward": "Továbbítás",
+    "archive": "Archiválás",
+    "search": "Keresés",
+    "escape": "Bezárás"
+  },
+  "errors": {
+    "imap_connection": "IMAP kapcsolati hiba: {error}",
+    "ai_failed": "AI hiba: {error}"
+  },
+  "error_title": "Valami hiba történt",
+  "unexpected_error": "Váratlan hiba",
+  "reload_page": "Oldal újratöltése",
+  "loading": "Betöltés..."
+}

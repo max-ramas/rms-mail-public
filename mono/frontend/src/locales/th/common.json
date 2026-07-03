@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "แป้นพิมพ์ลัด",
+    "next_email": "อีเมลถัดไป",
+    "prev_email": "อีเมลก่อนหน้า",
+    "reply": "ตอบกลับ",
+    "new_email": "อีเมลใหม่",
+    "delete": "ลบ",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "ช่วยเหลือ",
+    "forward": "ส่งต่อ",
+    "archive": "เก็บถาวร",
+    "search": "ค้นหา",
+    "escape": "ปิด"
+  },
+  "errors": {
+    "imap_connection": "ข้อผิดพลาดการเชื่อมต่อ IMAP: {error}",
+    "ai_failed": "ข้อผิดพลาด AI: {error}"
+  },
+  "error_title": "เกิดข้อผิดพลาด",
+  "unexpected_error": "ข้อผิดพลาดที่ไม่คาดคิด",
+  "reload_page": "โหลดหน้าใหม่",
+  "loading": "กำลังโหลด..."
+}

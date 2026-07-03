@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Pintasan Papan Kekunci",
+    "next_email": "E-mel seterusnya",
+    "prev_email": "E-mel sebelumnya",
+    "reply": "Balas",
+    "new_email": "E-mel baru",
+    "delete": "Padam",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Bantuan",
+    "forward": "Kirim Semula",
+    "archive": "Arkib",
+    "search": "Cari",
+    "escape": "Keluar"
+  },
+  "errors": {
+    "imap_connection": "Ralat sambungan IMAP: {error}",
+    "ai_failed": "Ralat AI: {error}"
+  },
+  "error_title": "Sesuatu telah berlaku",
+  "unexpected_error": "Ralat tidak dijangka",
+  "reload_page": "Muat semula halaman",
+  "loading": "Memuatkan..."
+}

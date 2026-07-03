@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "اختصارات لوحة المفاتيح",
+    "next_email": "البريد التالي",
+    "prev_email": "البريد السابق",
+    "reply": "رد",
+    "new_email": "بريد جديد",
+    "delete": "حذف",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "مساعدة",
+    "forward": "إعادة توجيه",
+    "archive": "أرشفة",
+    "search": "بحث",
+    "escape": "خروج"
+  },
+  "errors": {
+    "imap_connection": "خطأ اتصال IMAP: {error}",
+    "ai_failed": "خطأ الذكاء الاصطناعي: {error}"
+  },
+  "error_title": "حدث خطأ ما",
+  "unexpected_error": "خطأ غير متوقع",
+  "reload_page": "إعادة تحميل الصفحة",
+  "loading": "جار التحميل..."
+}

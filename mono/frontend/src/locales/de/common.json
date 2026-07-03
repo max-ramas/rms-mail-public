@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Tastaturkürzel",
+    "next_email": "Nächste E-Mail",
+    "prev_email": "Vorherige E-Mail",
+    "reply": "Antworten",
+    "new_email": "Neue E-Mail",
+    "delete": "Löschen",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Hilfe",
+    "forward": "Weiterleiten",
+    "archive": "Archivieren",
+    "search": "Suchen",
+    "escape": "Schließen"
+  },
+  "errors": {
+    "imap_connection": "IMAP Verbindungsfehler: {error}",
+    "ai_failed": "KI-Fehler: {error}"
+  },
+  "error_title": "Etwas ist schiefgelaufen",
+  "unexpected_error": "Unerwarteter Fehler",
+  "reload_page": "Seite neu laden",
+  "loading": "Laden..."
+}

@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "키보드 단축키",
+    "next_email": "다음 이메일",
+    "prev_email": "이전 이메일",
+    "reply": "답장",
+    "new_email": "새 이메일",
+    "delete": "삭제",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "도움말",
+    "forward": "전달",
+    "archive": "보관",
+    "search": "검색",
+    "escape": "닫기"
+  },
+  "errors": {
+    "imap_connection": "IMAP 연결 오류: {error}",
+    "ai_failed": "AI 오류: {error}"
+  },
+  "error_title": "문제가 발생했습니다",
+  "unexpected_error": "예상치 못한 오류",
+  "reload_page": "페이지 새로고침",
+  "loading": "로딩 중..."
+}

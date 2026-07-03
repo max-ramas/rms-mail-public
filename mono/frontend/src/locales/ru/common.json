@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Горячие клавиши",
+    "next_email": "Следующее письмо",
+    "prev_email": "Предыдущее письмо",
+    "reply": "Ответить",
+    "new_email": "Новое письмо",
+    "delete": "Удалить",
+    "toggle_read": "Переключить прочитано",
+    "select_all": "Выбрать всё",
+    "chat": "Чат с ИИ",
+    "pin": "Закрепить",
+    "help": "Помощь",
+    "forward": "Переслать",
+    "archive": "Архивировать",
+    "search": "Поиск",
+    "escape": "Закрыть"
+  },
+  "errors": {
+    "imap_connection": "Ошибка подключения IMAP: {error}",
+    "ai_failed": "Ошибка ИИ: {error}"
+  },
+  "error_title": "Что-то пошло не так",
+  "unexpected_error": "Неожиданная ошибка",
+  "reload_page": "Перезагрузить страницу",
+  "loading": "Загрузка..."
+}

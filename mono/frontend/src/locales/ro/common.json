@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Scurtături tastatură",
+    "next_email": "Următorul email",
+    "prev_email": "Emailul anterior",
+    "reply": "Răspunde",
+    "new_email": "Email nou",
+    "delete": "Șterge",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Ajutor",
+    "forward": "Redirecționează",
+    "archive": "Arhivează",
+    "search": "Caută",
+    "escape": "Închide"
+  },
+  "errors": {
+    "imap_connection": "Eroare conexiune IMAP: {error}",
+    "ai_failed": "Eroare AI: {error}"
+  },
+  "error_title": "Ceva nu a mers bine",
+  "unexpected_error": "Eroare neașteptată",
+  "reload_page": "Reîncarcă pagina",
+  "loading": "Se încarcă..."
+}

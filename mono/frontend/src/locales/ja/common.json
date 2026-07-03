@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "next_email": "次のメール",
+    "prev_email": "前のメール",
+    "reply": "返信",
+    "new_email": "新規メール",
+    "delete": "削除",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "ヘルプ",
+    "forward": "転送",
+    "archive": "アーカイブ",
+    "search": "検索",
+    "escape": "閉じる"
+  },
+  "errors": {
+    "imap_connection": "IMAP接続エラー: {error}",
+    "ai_failed": "AIエラー: {error}"
+  },
+  "error_title": "問題が発生しました",
+  "unexpected_error": "予期せぬエラー",
+  "reload_page": "ページを再読み込み",
+  "loading": "読み込み中..."
+}

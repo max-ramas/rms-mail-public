@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Пернетақта жарлықтары",
+    "next_email": "Келесі хат",
+    "prev_email": "Алдыңғы хат",
+    "reply": "Жауап беру",
+    "new_email": "Жаңа хат",
+    "delete": "Жою",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Анықтама",
+    "forward": "Қайта жіберу",
+    "archive": "Мұрағаттау",
+    "search": "Іздеу",
+    "escape": "Шығу"
+  },
+  "errors": {
+    "imap_connection": "IMAP қосылым қатесі: {error}",
+    "ai_failed": "AI қатесі: {error}"
+  },
+  "error_title": "Бірдеңе дұрыс болмады",
+  "unexpected_error": "Күтпеген қате",
+  "reload_page": "Бетті қайта жүктеу",
+  "loading": "Жүктелуде..."
+}

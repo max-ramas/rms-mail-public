@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Dreceres de teclat",
+    "next_email": "Següent correu",
+    "prev_email": "Correu anterior",
+    "reply": "Respondre",
+    "new_email": "Nou correu",
+    "delete": "Eliminar",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Ajuda",
+    "forward": "Reenviar",
+    "archive": "Arxivar",
+    "search": "Cercar",
+    "escape": "Sortir"
+  },
+  "errors": {
+    "imap_connection": "Error de connexió IMAP: {error}",
+    "ai_failed": "Error d'IA: {error}"
+  },
+  "error_title": "Alguna cosa ha anat malament",
+  "unexpected_error": "Error inesperat",
+  "reload_page": "Recarregar pàgina",
+  "loading": "Carregant..."
+}

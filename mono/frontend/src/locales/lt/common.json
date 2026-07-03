@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Klaviatūros trumpiniai",
+    "next_email": "Kitas laiškas",
+    "prev_email": "Ankstesnis laiškas",
+    "reply": "Atsakyti",
+    "new_email": "Naujas laiškas",
+    "delete": "Ištrinti",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Pagalba",
+    "forward": "Persiųsti",
+    "archive": "Archyvuoti",
+    "search": "Ieškoti",
+    "escape": "Uždaryti"
+  },
+  "errors": {
+    "imap_connection": "IMAP ryšio klaida: {error}",
+    "ai_failed": "AI klaida: {error}"
+  },
+  "error_title": "Kažkas nepavyko",
+  "unexpected_error": "Netikėta klaida",
+  "reload_page": "Įkelti puslapį iš naujo",
+  "loading": "Įkeliama..."
+}

@@ -1,5 +1,31 @@
 # Changelog
 
+## [3.1.4] — 2026-07-03
+
+### Fixed
+
+#### Email Viewer — 3-Second Text Stub Before Body Loads
+Clicking an email showed the plain-text snippet for 3–4 seconds before the full HTML body and thread interface loaded. Only the pulse skeleton should have been visible during loading.
+
+**Root cause**: A `setQueryData` call seeded React Query's cache with partial list-item data (email metadata with `snippet` but without `body`, `html`, or `attachments`). Combined with `refetchOnMount: false` on `useEmail`, the query believed it already had data — `isLoading` stayed `false`, `EmailBody` rendered `{body || snippet}` showing the snippet. The real body arrived only accidentally via the mark-read `invalidateQueries` 3 seconds later.
+
+**Fix**: Removed `setQueryData` cache seed in `handleSelectEmailList` and removed `refetchOnMount: false` from `useEmail`. New emails always trigger an immediate body fetch while maintaining cache for previously viewed emails within `staleTime: 60_000`.
+
+#### CAS Storage — Nil Pointer Panic in Production
+`ProcessMessageStreamToFolder` panicked with `nil pointer dereference` on `f.CAS.Save()` for emails with attachments. Go interface nil trap: a nil `*attachment.CASStorage` passed to an `interface{}` parameter wraps as non-nil.
+
+**Fix**: `var casIf sync.CASStore; if cas != nil { casIf = cas }` — explicit nil check before passing to interface.
+
+#### Login — DB Error vs Invalid Credentials
+`HandleLogin` returned generic 401 for both "wrong password" and "database connection failure". AuthGuard responded to 401 with a redirect to `/login` — transient DB errors caused logout.
+
+**Fix**: `GetAdminByEmail` uses `errors.Is(err, pgx.ErrNoRows)`. `HandleLogin` returns 503 on DB errors, 401 only for genuine auth failures. `AuthGuard` retries verify once after 500ms on 401.
+
+### Changed
+
+- **Dockerfiles**: English comments throughout (frontend + backend).
+- **Mono license pinger**: Hardcoded `https://license.rms-ds.com` without env override. Update notifications (`latest_version`, `release_notes`) + `InitHK()` restored for Mono edition.
+
 ## [3.1.3] — 2026-07-01
 
 ### Changed

@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Skróty klawiaturowe",
+    "next_email": "Następny e-mail",
+    "prev_email": "Poprzedni e-mail",
+    "reply": "Odpowiedz",
+    "new_email": "Nowy e-mail",
+    "delete": "Usuń",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Pomoc",
+    "forward": "Przekaż",
+    "archive": "Archiwizuj",
+    "search": "Szukaj",
+    "escape": "Zamknij"
+  },
+  "errors": {
+    "imap_connection": "Błąd połączenia IMAP: {error}",
+    "ai_failed": "Błąd AI: {error}"
+  },
+  "error_title": "Coś poszło nie tak",
+  "unexpected_error": "Nieoczekiwany błąd",
+  "reload_page": "Przeładuj stronę",
+  "loading": "Ładowanie..."
+}

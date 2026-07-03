@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Гарячі клавіші",
+    "next_email": "Наступний лист",
+    "prev_email": "Попередній лист",
+    "reply": "Відповісти",
+    "new_email": "Новий лист",
+    "delete": "Видалити",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Довідка",
+    "forward": "Переслати",
+    "archive": "Архівувати",
+    "search": "Пошук",
+    "escape": "Закрити"
+  },
+  "errors": {
+    "imap_connection": "Помилка з'єднання IMAP: {error}",
+    "ai_failed": "Помилка ШІ: {error}"
+  },
+  "error_title": "Щось пішло не так",
+  "unexpected_error": "Неочікувана помилка",
+  "reload_page": "Перезавантажити сторінку",
+  "loading": "Завантаження..."
+}

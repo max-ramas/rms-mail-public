@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Пречице на тастатури",
+    "next_email": "Следећи имејл",
+    "prev_email": "Претходни имејл",
+    "reply": "Одговори",
+    "new_email": "Нови имејл",
+    "delete": "Обриши",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Помоћ",
+    "forward": "Проследи",
+    "archive": "Архивирај",
+    "search": "Претражи",
+    "escape": "Затвори"
+  },
+  "errors": {
+    "imap_connection": "IMAP грешка везе: {error}",
+    "ai_failed": "AI грешка: {error}"
+  },
+  "error_title": "Нешто није у реду",
+  "unexpected_error": "Неочекивана грешка",
+  "reload_page": "Поново учитај",
+  "loading": "Учитавање..."
+}

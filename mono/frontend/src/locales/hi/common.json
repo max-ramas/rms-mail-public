@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "कीबोर्ड शॉर्टकट",
+    "next_email": "अगला ईमेल",
+    "prev_email": "पिछला ईमेल",
+    "reply": "जवाब दें",
+    "new_email": "नया ईमेल",
+    "delete": "हटाएँ",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "सहायता",
+    "forward": "अग्रेषित करें",
+    "archive": "आर्काइव करें",
+    "search": "खोजें",
+    "escape": "बाहर निकलें"
+  },
+  "errors": {
+    "imap_connection": "IMAP कनेक्शन त्रुटि: {error}",
+    "ai_failed": "AI त्रुटि: {error}"
+  },
+  "error_title": "कुछ गलत हो गया",
+  "unexpected_error": "अप्रत्याशित त्रुटि",
+  "reload_page": "पेज रीलोड करें",
+  "loading": "लोड हो रहा है..."
+}

@@ -1,0 +1,2 @@
+-- Migration 022 (Mono): Per-folder IMAP UIDVALIDITY
+ALTER TABLE folders ADD COLUMN IF NOT EXISTS uid_validity INTEGER DEFAULT 0;

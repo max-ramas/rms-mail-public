@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Tastatursnarveier",
+    "next_email": "Neste e-post",
+    "prev_email": "Forrige e-post",
+    "reply": "Svar",
+    "new_email": "Ny e-post",
+    "delete": "Slett",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Hjelp",
+    "forward": "Videresend",
+    "archive": "Arkiver",
+    "search": "Søk",
+    "escape": "Lukk"
+  },
+  "errors": {
+    "imap_connection": "IMAP tilkoblingsfeil: {error}",
+    "ai_failed": "AI feil: {error}"
+  },
+  "error_title": "Noe gikk galt",
+  "unexpected_error": "Uventet feil",
+  "reload_page": "Last siden på nytt",
+  "loading": "Laster..."
+}

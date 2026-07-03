@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Tastatūras īsinājumi",
+    "next_email": "Nākamais e-pasts",
+    "prev_email": "Iepriekšējais e-pasts",
+    "reply": "Atbildēt",
+    "new_email": "Jauns e-pasts",
+    "delete": "Dzēst",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Palīdzība",
+    "forward": "Pārsūtīt",
+    "archive": "Arhivēt",
+    "search": "Meklēt",
+    "escape": "Aizvērt"
+  },
+  "errors": {
+    "imap_connection": "IMAP savienojuma kļūda: {error}",
+    "ai_failed": "AI kļūda: {error}"
+  },
+  "error_title": "Kaut kas nogāja greizi",
+  "unexpected_error": "Negaidīta kļūda",
+  "reload_page": "Pārlādēt lapu",
+  "loading": "Ielādē..."
+}

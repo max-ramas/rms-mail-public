@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "কীবোর্ড শর্টকাট",
+    "next_email": "পরবর্তী ইমেইল",
+    "prev_email": "পূর্ববর্তী ইমেইল",
+    "reply": "উত্তর",
+    "new_email": "নতুন ইমেইল",
+    "delete": "মুছুন",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "সাহায্য",
+    "forward": "ফরওয়ার্ড",
+    "archive": "আর্কাইভ",
+    "search": "খুঁজুন",
+    "escape": "প্রস্থান"
+  },
+  "errors": {
+    "imap_connection": "IMAP সংযোগ ত্রুটি: {error}",
+    "ai_failed": "AI ত্রুটি: {error}"
+  },
+  "error_title": "কিছু ভুল হয়েছে",
+  "unexpected_error": "অপ্রত্যাশিত ত্রুটি",
+  "reload_page": "পৃষ্ঠা রিলোড করুন",
+  "loading": "লোড হচ্ছে..."
+}

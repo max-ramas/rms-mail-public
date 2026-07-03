@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Klaviatura Qısayolları",
+    "next_email": "Növbəti e-poçt",
+    "prev_email": "Əvvəlki e-poçt",
+    "reply": "Cavabla",
+    "new_email": "Yeni e-poçt",
+    "delete": "Sil",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Kömək",
+    "forward": "Yönləndir",
+    "archive": "Arxivlə",
+    "search": "Axtar",
+    "escape": "Çıxış"
+  },
+  "errors": {
+    "imap_connection": "IMAP bağlantı xətası: {error}",
+    "ai_failed": "AI xətası: {error}"
+  },
+  "error_title": "Nəsə səhv oldu",
+  "unexpected_error": "Gözlənilməz xəta",
+  "reload_page": "Səhifəni yenilə",
+  "loading": "Yüklənir..."
+}

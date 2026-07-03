@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "Bližnjice na tipkovnici",
+    "next_email": "Naslednji e-poštni",
+    "prev_email": "Prejšnji e-poštni",
+    "reply": "Odgovori",
+    "new_email": "Nov e-poštni",
+    "delete": "Izbriši",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "Pomoč",
+    "forward": "Posreduj",
+    "archive": "Arhiviraj",
+    "search": "Išči",
+    "escape": "Zapri"
+  },
+  "errors": {
+    "imap_connection": "Napaka IMAP povezave: {error}",
+    "ai_failed": "Napaka AI: {error}"
+  },
+  "error_title": "Nekaj je šlo narobe",
+  "unexpected_error": "Nepričakovana napaka",
+  "reload_page": "Ponovno naloži",
+  "loading": "Nalaganje..."
+}

@@ -1,0 +1,27 @@
+{
+  "shortcuts": {
+    "title": "键盘快捷键",
+    "next_email": "下一封邮件",
+    "prev_email": "上一封邮件",
+    "reply": "回复",
+    "new_email": "新邮件",
+    "delete": "删除",
+    "toggle_read": "Toggle read",
+    "select_all": "Select all",
+    "chat": "Chat with AI",
+    "pin": "Pin",
+    "help": "帮助",
+    "forward": "转发",
+    "archive": "归档",
+    "search": "搜索",
+    "escape": "关闭"
+  },
+  "errors": {
+    "imap_connection": "IMAP连接错误：{error}",
+    "ai_failed": "AI错误：{error}"
+  },
+  "error_title": "出了点问题",
+  "unexpected_error": "意外错误",
+  "reload_page": "重新加载页面",
+  "loading": "加载中..."
+}

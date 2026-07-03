@@ -8,6 +8,9 @@ if ! command -v openssl &> /dev/null; then
     exit 1
 fi
 
+# Clean up any leftover temp file if the script exits unexpectedly mid-sed
+trap 'rm -f .env.tmp' EXIT
+
 # CLI arguments (for CI/CD / non-interactive automation)
 edition="$1"
 domain_url="$2"
@@ -25,10 +28,27 @@ gen_secret() {
     openssl rand -hex "$1"
 }
 
+# Escapes &, |, and \ so a value can be safely used as a sed replacement
+# with a | delimiter. Prevents broken substitutions or unintended
+# behavior if a user-supplied value (email/domain) contains these chars.
+sed_escape() {
+    printf '%s' "$1" | sed -e 's/[\&|]/\\&/g'
+}
+
 safe_replace() {
     local pattern="$1"
     local file=".env"
     sed "$pattern" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+}
+
+# Basic sanity check for email input (not full RFC 5322 validation,
+# just enough to catch empty/garbage input before it hits sed/.env)
+validate_email() {
+    local email="$1"
+    if [[ ! "$email" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+        return 1
+    fi
+    return 0
 }
 
 case $edition in
@@ -53,13 +73,20 @@ case $edition in
             cp .env-mp.example .env
             cp docker-compose-mp.yml docker-compose.yml
 
+            if [ -n "$admin_email" ] && ! validate_email "$admin_email"; then
+                echo "[-] Warning: ADMIN_EMAIL provided via argument looks invalid. Ignoring it." >&2
+                admin_email=""
+            fi
+
             if [ -z "$admin_email" ]; then
                 read -rp "Enter ADMIN_EMAIL (required for initial login): " admin_email
-                while [ -z "$admin_email" ]; do
-                    read -rp "ADMIN_EMAIL cannot be empty. Enter admin email: " admin_email
+                while ! validate_email "$admin_email"; do
+                    read -rp "That doesn't look like a valid email. Enter admin email: " admin_email
                 done
             fi
-            safe_replace "s|^ADMIN_EMAIL=['\"]\?.*|ADMIN_EMAIL=$admin_email|"
+
+            safe_admin_email=$(sed_escape "$admin_email")
+            safe_replace "s|^ADMIN_EMAIL=['\"]\?.*|ADMIN_EMAIL=$safe_admin_email|"
         fi
 
         PG_PASS=$(gen_secret 16)
@@ -87,9 +114,13 @@ fi
 
 if [ -n "$domain_url" ]; then
     domain_url="${domain_url%/}"
-    safe_replace "s|^FRONTEND_URL=['\"]\?.*|FRONTEND_URL=$domain_url|"
-    safe_replace "s|^ALLOWED_ORIGINS=['\"]\?.*|ALLOWED_ORIGINS=$domain_url|"
+    safe_domain_url=$(sed_escape "$domain_url")
+    safe_replace "s|^FRONTEND_URL=['\"]\?.*|FRONTEND_URL=$safe_domain_url|"
+    safe_replace "s|^ALLOWED_ORIGINS=['\"]\?.*|ALLOWED_ORIGINS=$safe_domain_url|"
 fi
+
+# .env now contains DB/JWT/encryption secrets — lock it down
+chmod 600 .env
 
 echo -e "\n[✓] Environment configured successfully!"
 echo "Now you can run: docker compose up -d"

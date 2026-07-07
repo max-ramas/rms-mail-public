@@ -112,7 +112,6 @@ Uploading files for email compose failed silently on PostgreSQL (Unified/MonoPro
 
 ### Changed
 
-- **Dockerfiles**: Russian comments → English. M2-specific compilation comment → generic.
 - **Backend Dockerfile**: removed stale `ARG PUBLIC_KEY=""`, removed `schema.sql` copy (Mono-only).
 - **License ping**: `LICENSE_SERVER_URL` env override removed — uses hardcoded `https://license.rms-ds.com`.
 - **Mono edition**: `InitHK()`, periodic update pings with `latest_version`/`release_notes` restored.

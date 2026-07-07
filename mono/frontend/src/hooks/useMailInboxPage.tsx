@@ -557,11 +557,14 @@ export function useMailInboxPage(locale: string) {
         const uploaded = (await res.json()) || [];
         setAttachments((prev) => [...prev, ...uploaded]);
       } catch (err) {
-        if (process.env.NODE_ENV === "development")
-          console.error("Upload failed", err);
+        console.error("Upload failed", err);
+        toast.addToast(
+          err instanceof Error ? err.message : "File upload failed",
+          "error",
+        );
       }
     },
-    [setAttachments],
+    [setAttachments, toast],
   );
 
   const handleSelectEmailList = React.useCallback(

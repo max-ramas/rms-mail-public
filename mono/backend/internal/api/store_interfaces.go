@@ -42,6 +42,9 @@ type EmailReader interface {
 	GetDraftsFolder(ctx context.Context, accountID string) (*models.Folder, error)
 	GetActiveFilePaths(ctx context.Context) ([]string, error)
 	RefreshUnreadCounts(ctx context.Context) error
+	GetEmailByMsgIDAccount(ctx context.Context, msgID, accountID string) (*models.Email, error)
+	GetEmailsByLabel(ctx context.Context, accountID, label string, offset, limit int) ([]models.Email, error)
+	GetGmailLabels(ctx context.Context, emailID, accountID string) ([]string, error)
 }
 
 // EmailWriter — email mutations.
@@ -83,6 +86,7 @@ type EmailWriter interface {
 	SaveEmailToFolder(ctx context.Context, email models.Email, folderID string) (bool, error)
 	MoveEmailAndEnqueueIMAP(ctx context.Context, emailID, accountID, targetFolderID, targetFolderName, sourceFolderName string, remoteUID int32) error
 	EnqueueIMAPMove(ctx context.Context, emailID, accountID, targetFolderID, targetFolderName, sourceFolderName string, remoteUID int32) error
+	DeleteEmailLabels(ctx context.Context, emailID, accountID string) error
 }
 
 // AccountStore — account lifecycle and credentials.
@@ -104,6 +108,7 @@ type AccountStore interface {
 	UpdateAccountSyncError(ctx context.Context, id string, errText string) error
 	UpdateAccountLastUID(ctx context.Context, id string, lastUID uint32) error
 	UpdateAccountUIDValidity(ctx context.Context, id string, uidValidity uint32) error
+	UpdateAccountIsGmail(ctx context.Context, accountID string, isGmail bool) error
 }
 
 // FolderStore — folder management.
@@ -224,4 +229,6 @@ type SystemStore interface {
 	RemoveSyncTaskByUID(ctx context.Context, accountID, folderName string, uid uint32) error
 	ClearFolderQueue(ctx context.Context, accountID, folderName string) error
 	GetEmailIDByFolderUID(ctx context.Context, accountID, folderPath string, uid uint32) (string, error)
+	UpsertEmailLabels(ctx context.Context, emailID, accountID string, labels []string) error
+	CleanupGmailDuplicates(ctx context.Context, accountID string) (int, error)
 }

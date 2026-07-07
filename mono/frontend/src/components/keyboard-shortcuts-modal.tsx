@@ -54,7 +54,7 @@ export function KeyboardShortcutsModal() {
         variant="ghost"
         size="icon"
         className="w-8 h-8 rounded-full text-muted-foreground hover:text-foreground"
-        title={`${t("hotkeys_title")} (Shift+?)`}
+        title={`${t("hotkeys_title")} (Cmd+K / Ctrl+K)`}
         onClick={() => setIsOpen(true)}
       >
         <HelpCircle className="w-4 h-4" />
@@ -71,6 +71,11 @@ export function KeyboardShortcutsModal() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {t("hotkeys_hint")}
                 </p>
+                <div className="flex gap-1.5 mt-2">
+                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-medium text-foreground/70 bg-muted border border-border/50 rounded">Cmd+K</kbd>
+                  <span className="text-[10px] text-muted-foreground self-center">or</span>
+                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-medium text-foreground/70 bg-muted border border-border/50 rounded">Cmd+Shift+P</kbd>
+                </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}

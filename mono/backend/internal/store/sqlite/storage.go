@@ -158,6 +158,7 @@ func (s *Storage) InitSchema(ctx context.Context, schemaSQL string) error {
 	s.addColumnIfMissing(ctx, "emails", "resolved_at", "TEXT")
 	s.addColumnIfMissing(ctx, "emails", "smart_category", "INTEGER DEFAULT 0")
 	s.addColumnIfMissing(ctx, "emails", "is_answered", "INTEGER DEFAULT 0")
+	s.addColumnIfMissing(ctx, "accounts", "is_gmail", "INTEGER DEFAULT 0")
 	s.addColumnIfMissing(ctx, "imap_move_queue", "source_folder_name", "TEXT DEFAULT ''")
 	// Ensure name_lower index and is_inbox index exist
 	s.db.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_folders_name_lower ON folders (account_id, name_lower)`)
@@ -476,4 +477,157 @@ func (s *Storage) RekeyAll(ctx context.Context) (int, error) {
 	}
 
 	return count, nil
+}
+
+func (s *Storage) GetGmailLabels(ctx context.Context, emailID, accountID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT label FROM email_labels_junction WHERE email_id = ? AND account_id = ?`, emailID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var labels []string
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			return nil, err
+		}
+		labels = append(labels, label)
+	}
+	return labels, rows.Err()
+}
+
+// BackfillGmailLabels creates email_labels_junction entries for all existing Gmail
+// emails based on their current folder_id. One-time operation after is_gmail is set.
+func (s *Storage) BackfillGmailLabels(ctx context.Context, accountID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT OR IGNORE INTO email_labels_junction (email_id, account_id, label, system)
+		SELECT e.id, e.account_id, COALESCE(f.path, ''), 0
+		FROM emails e
+		JOIN folders f ON e.folder_id = f.id
+		WHERE e.account_id = ? AND e.msg_id != '' AND COALESCE(f.path, '') != ''
+		AND e.id NOT IN (SELECT email_id FROM email_labels_junction WHERE account_id = ?)
+	`, accountID, accountID)
+	if err != nil {
+		return err
+	}
+	n, _ := s.db.ExecContext(ctx, `SELECT COUNT(*) FROM email_labels_junction WHERE account_id = ?`, accountID)
+	slog.Info("Gmail: backfilled labels from folder_id", "accountID", accountID)
+	_ = n
+	return nil
+}
+
+// CleanupGmailDuplicates merges duplicate email rows for Gmail accounts.
+// Emails with the same (msg_id, account_id) but different folder_ids are merged:
+// the row with the most fields kept, folder_ids collected as labels in the junction.
+func (s *Storage) CleanupGmailDuplicates(ctx context.Context, accountID string) (int, error) {
+	var removed int
+	err := s.withWriteRetry(ctx, func(ctx context.Context) error {
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil { return err }
+		defer tx.Rollback()
+
+		// Find duplicate groups: msg_ids that appear more than once for this account
+		rows, err := tx.QueryContext(ctx,
+			`SELECT msg_id FROM emails WHERE account_id = ? AND msg_id != '' GROUP BY msg_id HAVING COUNT(*) > 1`, accountID)
+		if err != nil { return err }
+		defer rows.Close()
+
+		var dupMsgIDs []string
+		for rows.Next() {
+			var msgID string
+			if err := rows.Scan(&msgID); err != nil { return err }
+			dupMsgIDs = append(dupMsgIDs, msgID)
+		}
+		rows.Close()
+
+		for _, msgID := range dupMsgIDs {
+			// Find the best row to keep (one with most non-empty fields)
+			dupRows, err := tx.QueryContext(ctx,
+				`SELECT id, folder_id, uid, subject, snippet, body_path FROM emails WHERE msg_id = ? AND account_id = ?`, msgID, accountID)
+			if err != nil { return err }
+
+			var (
+				bestID      string
+				bestScore   int
+				labels      []string
+				deleteIDs   []string
+			)
+			for dupRows.Next() {
+				var id, folderID, subject, snippet, bodyPath string
+				var uid int32
+				if err := dupRows.Scan(&id, &folderID, &uid, &subject, &snippet, &bodyPath); err != nil { return err }
+				score := 0
+				if bodyPath != "" { score += 3 }
+				if subject != "" { score += 2 }
+				if uid > 0 { score++ }
+				if score > bestScore || bestID == "" {
+					if bestID != "" { deleteIDs = append(deleteIDs, bestID) }
+					bestID = id
+					bestScore = score
+				} else {
+					deleteIDs = append(deleteIDs, id)
+				}
+			}
+			dupRows.Close()
+
+			if bestID == "" { continue }
+
+			// Collect all folder_ids as labels from ALL rows
+			folderRows, _ := tx.QueryContext(ctx,
+				`SELECT DISTINCT f.path FROM emails e JOIN folders f ON e.folder_id = f.id WHERE e.msg_id = ? AND e.account_id = ? AND f.path != ''`, msgID, accountID)
+			if folderRows != nil {
+				for folderRows.Next() {
+					var path string
+					if folderRows.Scan(&path) == nil { labels = append(labels, path) }
+				}
+				folderRows.Close()
+			}
+
+			// Delete duplicate rows
+			for _, did := range deleteIDs {
+				tx.ExecContext(ctx, "DELETE FROM emails_fts WHERE email_id = ?", did)
+				tx.ExecContext(ctx, "DELETE FROM emails WHERE id = ? AND account_id = ?", did, accountID)
+				removed++
+			}
+
+			// Insert labels for survivor
+			if len(labels) > 0 {
+				tx.ExecContext(ctx, "DELETE FROM email_labels_junction WHERE email_id = ? AND account_id = ?", bestID, accountID)
+				for _, label := range labels {
+					tx.ExecContext(ctx,
+						`INSERT OR IGNORE INTO email_labels_junction (email_id, account_id, label, system) VALUES (?, ?, ?, 0)`,
+						bestID, accountID, label)
+				}
+			}
+		}
+		return tx.Commit()
+	})
+	return removed, err
+}
+
+func (s *Storage) UpsertEmailLabels(ctx context.Context, emailID, accountID string, labels []string) error {
+	return s.withWriteRetryLow(ctx, func(ctx context.Context) error {
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		if _, err := tx.ExecContext(ctx, `DELETE FROM email_labels_junction WHERE email_id = ? AND account_id = ?`, emailID, accountID); err != nil {
+			return err
+		}
+		for _, label := range labels {
+			sys := 0
+			if isGmailSystemLabel(label) {
+				sys = 1
+			}
+			if _, err := tx.ExecContext(ctx,
+				`INSERT OR IGNORE INTO email_labels_junction (email_id, account_id, label, system) VALUES (?, ?, ?, ?)`,
+				emailID, accountID, label, sys); err != nil {
+				return err
+			}
+		}
+		return tx.Commit()
+	})
 }

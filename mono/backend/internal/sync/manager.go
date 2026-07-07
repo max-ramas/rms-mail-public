@@ -14,7 +14,6 @@ import (
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
-	"github.com/emersion/go-sasl"
 
 	"rmsmail/internal/auth"
 	"rmsmail/internal/models"
@@ -31,6 +30,7 @@ type SyncStore interface {
 	UpdateAccountTokens(ctx context.Context, id string, accessToken, refreshToken string) error
 	UpdateAccountOAuth(ctx context.Context, id, provider, imapHost string, imapPort int, imapSSL bool, imapEncryption, smtpHost string, smtpPort int, smtpSSL bool, smtpEncryption, username string) error
 	UpdateAccountSyncError(ctx context.Context, id string, errText string) error
+	UpdateAccountIsGmail(ctx context.Context, id string, isGmail bool) error
 	UpdateAccountLastUID(ctx context.Context, id string, lastUID uint32) error
 	UpdateAccountUIDValidity(ctx context.Context, id string, uidValidity uint32) error
 	ResetAccountSync(ctx context.Context, accountID string) error
@@ -42,6 +42,7 @@ type SyncStore interface {
 	UpdateFolderUIDValidity(ctx context.Context, folderID string, uidValidity uint32) error
 
 	GetEmail(ctx context.Context, id string, accountID string) (*models.Email, error)
+	GetEmailByMsgIDAccount(ctx context.Context, msgID, accountID string) (*models.Email, error)
 	EmailExistsByMsgID(ctx context.Context, accountID, msgID string) (bool, error)
 	GetEmailIDByFolderUID(ctx context.Context, accountID, folderPath string, uid uint32) (string, error)
 	SaveEmail(ctx context.Context, email models.Email) error
@@ -68,6 +69,12 @@ type SyncStore interface {
 
 	AddEmailTag(ctx context.Context, emailID string, accountID string, tag string) error
 	GetEmailTags(ctx context.Context, emailID string, accountID string) ([]string, error)
+	UpsertEmailLabels(ctx context.Context, emailID, accountID string, labels []string) error
+	GetGmailLabels(ctx context.Context, emailID, accountID string) ([]string, error)
+	CleanupGmailDuplicates(ctx context.Context, accountID string) (int, error)
+	BackfillGmailLabels(ctx context.Context, accountID string) error
+	GetSystemSetting(ctx context.Context, key string) (string, error)
+	SetSystemSetting(ctx context.Context, key, value string) error
 	GetActiveRules(ctx context.Context, accountID string) ([]models.FilterRule, error)
 
 	SenderProfileValid(ctx context.Context, email string) bool
@@ -429,13 +436,6 @@ func (m *Manager) forceRestartWorkers(ctx context.Context) {
 			slog.Info("Manager: max workers limit, skipping", "maxWorkers", m.maxWorkers, "email", acc.Email)
 			continue
 		}
-		if creds, err := m.Store.GetAccountCredentials(ctx, acc.ID); err == nil && creds != nil && (creds.PasswordEncrypted != "" || creds.OAuthAccessToken != "") {
-			m.startWorkerWithJitter(ctx, *creds, len(accounts))
-		} else if err != nil {
-			slog.Info("Manager: cannot get credentials, skipping", "email", acc.Email, "error", err)
-		} else {
-			slog.Info("Manager: no credentials, skipping", "email", acc.Email)
-		}
 	}
 	m.mu.Unlock()
 }
@@ -510,10 +510,6 @@ func (m *Manager) bootstrapMissingWorkers(ctx context.Context) {
 		if len(m.workers) >= m.maxWorkers {
 			break
 		}
-		if creds, err := m.Store.GetAccountCredentials(ctx, acc.ID); err == nil && creds != nil && (creds.PasswordEncrypted != "" || creds.OAuthAccessToken != "") {
-			m.startWorkerWithJitter(ctx, *creds, len(accounts))
-			started++
-		}
 	}
 	m.mu.Unlock()
 	if started > 0 {
@@ -561,13 +557,6 @@ func (m *Manager) refreshWorkers(ctx context.Context) {
 			newWorkers++
 			// Start worker with jitter proportional to fleet size
 			// Use GetAccountCredentials to get decrypted passwords for the sync worker
-			if creds, err := m.Store.GetAccountCredentials(ctx, acc.ID); err == nil && creds != nil && (creds.PasswordEncrypted != "" || creds.OAuthAccessToken != "") {
-				m.startWorkerWithJitter(ctx, *creds, len(accounts))
-			} else if err != nil {
-				slog.Info("Manager: cannot get credentials, skipping", "email", acc.Email, "error", err)
-			} else {
-				slog.Info("Manager: no password or OAuth credentials configured, skipping", "email", acc.Email)
-			}
 		}
 	}
 
@@ -696,9 +685,6 @@ func (m *Manager) AppendToSent(ctx context.Context, accountID string, emailBody 
 	if err != nil {
 		return err
 	}
-	if acc == nil || (acc.PasswordEncrypted == "" && acc.OAuthAccessToken == "") {
-		return fmt.Errorf("no credentials for account %s", accountID)
-	}
 
 	serverAddr := fmt.Sprintf("%s:%d", acc.IMAPHost, acc.IMAPPort)
 	encryption := acc.IMAPEncryption
@@ -726,18 +712,6 @@ func (m *Manager) AppendToSent(ctx context.Context, accountID string, emailBody 
 	}
 	defer c.Close()
 
-	if acc.OAuthAccessToken != "" {
-		auth := NewXOAUTH2Client(acc.Username, acc.OAuthAccessToken)
-		if err := c.Authenticate(auth); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP XOAUTH2 auth failed: %w", err)
-		}
-	} else {
-		if err := c.Login(acc.Username, acc.PasswordEncrypted).Wait(); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP Login failed: %w", err)
-		}
-	}
 	defer c.Logout()
 
 	var sentFolder string
@@ -794,9 +768,6 @@ func (m *Manager) AppendToNotes(ctx context.Context, accountID string, noteBody 
 	if err != nil {
 		return err
 	}
-	if acc == nil || (acc.PasswordEncrypted == "" && acc.OAuthAccessToken == "") {
-		return fmt.Errorf("no credentials for account %s", accountID)
-	}
 
 	serverAddr := fmt.Sprintf("%s:%d", acc.IMAPHost, acc.IMAPPort)
 	encryption := acc.IMAPEncryption
@@ -824,18 +795,6 @@ func (m *Manager) AppendToNotes(ctx context.Context, accountID string, noteBody 
 	}
 	defer c.Close()
 
-	if acc.OAuthAccessToken != "" {
-		auth := NewXOAUTH2Client(acc.Username, acc.OAuthAccessToken)
-		if err := c.Authenticate(auth); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP XOAUTH2 auth failed: %w", err)
-		}
-	} else {
-		if err := c.Authenticate(sasl.NewPlainClient("", acc.Username, acc.PasswordEncrypted)); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP Login failed: %w", err)
-		}
-	}
 	defer c.Logout()
 
 	var notesFolder string
@@ -882,9 +841,6 @@ func (m *Manager) AppendToDrafts(ctx context.Context, accountID string, draftBod
 	if err != nil {
 		return err
 	}
-	if acc == nil || (acc.PasswordEncrypted == "" && acc.OAuthAccessToken == "") {
-		return fmt.Errorf("no credentials for account %s", accountID)
-	}
 
 	serverAddr := fmt.Sprintf("%s:%d", acc.IMAPHost, acc.IMAPPort)
 	encryption := acc.IMAPEncryption
@@ -912,18 +868,6 @@ func (m *Manager) AppendToDrafts(ctx context.Context, accountID string, draftBod
 	}
 	defer c.Close()
 
-	if acc.OAuthAccessToken != "" {
-		auth := NewXOAUTH2Client(acc.Username, acc.OAuthAccessToken)
-		if err := c.Authenticate(auth); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP XOAUTH2 auth failed: %w", err)
-		}
-	} else {
-		if err := c.Authenticate(sasl.NewPlainClient("", acc.Username, acc.PasswordEncrypted)); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP Login failed: %w", err)
-		}
-	}
 	defer c.Logout()
 
 	var draftsFolder string
@@ -971,9 +915,6 @@ func (m *Manager) AppendToDraftsDeduplicated(ctx context.Context, accountID stri
 	if err != nil {
 		return err
 	}
-	if acc == nil || (acc.PasswordEncrypted == "" && acc.OAuthAccessToken == "") {
-		return fmt.Errorf("no credentials for account %s", accountID)
-	}
 
 	email, err := m.Store.GetEmail(ctx, emailID, accountID)
 	if err != nil {
@@ -1009,18 +950,6 @@ func (m *Manager) AppendToDraftsDeduplicated(ctx context.Context, accountID stri
 	}
 	defer c.Close()
 
-	if acc.OAuthAccessToken != "" {
-		auth := NewXOAUTH2Client(acc.Username, acc.OAuthAccessToken)
-		if err := c.Authenticate(auth); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP XOAUTH2 auth failed: %w", err)
-		}
-	} else {
-		if err := c.Authenticate(sasl.NewPlainClient("", acc.Username, acc.PasswordEncrypted)); err != nil {
-			c.Logout()
-			return fmt.Errorf("IMAP Login failed: %w", err)
-		}
-	}
 	defer c.Logout()
 
 	var draftsFolder string

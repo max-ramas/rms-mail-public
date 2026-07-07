@@ -94,6 +94,13 @@ export function CommandPalette({ context = "inbox" }: Props) {
         setQuery("");
         setSelectedIndex(0);
       }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.code === "KeyK") {
+        e.preventDefault();
+        savedFocus.current = document.activeElement;
+        setOpen(true);
+        setQuery("");
+        setSelectedIndex(0);
+      }
       if (e.key === "Escape" && open) {
         e.preventDefault();
         e.stopPropagation();

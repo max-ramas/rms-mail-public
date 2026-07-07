@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"rmsmail/internal/edition"
 	"rmsmail/internal/models"
@@ -88,10 +89,7 @@ func (h *Handler) GetEmails(w http.ResponseWriter, r *http.Request) {
 	}
 	cacheKey := fmt.Sprintf("email_list:acc:%s:fold:%s:foldn:%s:off:%d:lim:%d:unr:%v:flg:%v:att:%v:sch:%s:lbl:%s:tag:%s",
 		cacheKeyAcc, folderID, folderName, offset, limit, filterUnread, filterFlagged, filterAttachments, filterSearch, filterLabelID, filterTag)
-
-	if h.tryCache(w, r, cacheKey) {
-		return
-	}
+	_ = cacheKey // Redis cache disabled for email listing — cursor headers must be computed per-request
 
 	if groupID != "" {
 		ids, err := h.Store.GetGroupEmailAccountIDs(r.Context(), groupID)
@@ -143,7 +141,7 @@ func (h *Handler) GetEmails(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if false {
-
+			// cacheSet removed — cursor headers must be computed per-request
 		}
 		w.Write(b)
 		return
@@ -153,6 +151,67 @@ func (h *Handler) GetEmails(w http.ResponseWriter, r *http.Request) {
 	var nextCursor *models.Cursor
 	var err error
 	var scopedAccountIDs []string
+
+	// Gmail: route folder-based listing through label junction.
+	// Uses offset-based pagination with X-Next-Cursor encoding the next offset.
+	if !unified && accountID != "" && (folderID != "" || folderName != "") {
+		// Cached IsGmail check — one DB round-trip per account
+		h.gmailMu.RLock()
+		isGmail, ok := h.gmailCache[accountID]
+		h.gmailMu.RUnlock()
+		if !ok {
+			acc, _ := h.Store.GetAccount(r.Context(), accountID)
+			isGmail = acc != nil && acc.IsGmail
+			h.gmailMu.Lock()
+			if h.gmailCache == nil {
+				h.gmailCache = make(map[string]bool)
+			}
+			h.gmailCache[accountID] = isGmail
+			h.gmailMu.Unlock()
+		}
+		if isGmail {
+			label := folderName
+			if label == "" && folderID != "" {
+				folder, _ := h.Store.GetFolderByID(r.Context(), folderID)
+				if folder != nil {
+					label = folder.Path
+				}
+			}
+			if label != "" {
+				// Support cursor for offset-based pagination: parse cursor → offset
+				if cursor != nil {
+					offset = int(cursor.DateSent.Unix())
+				}
+				emails, err = h.Store.GetEmailsByLabel(r.Context(), accountID, label, offset, limit)
+				if err == nil {
+					h.Store.AttachAvatars(r.Context(), emails)
+					for i := range emails {
+						if emails[i].AvatarURL != "" {
+							emails[i].AvatarURL = fmt.Sprintf("/api/media/proxy?url=%s&sig=%s",
+								url.QueryEscape(emails[i].AvatarURL), camoSign(emails[i].AvatarURL))
+						}
+					}
+					w.Header().Set("Content-Type", "application/json")
+					if emails == nil {
+						emails = []models.Email{}
+					}
+					b2, _ := json.Marshal(emails)
+					if false {
+					}
+					if len(emails) == limit {
+						nextOffset := offset + limit
+						c := models.Cursor{DateSent: time.Unix(int64(nextOffset), 0), ID: strconv.Itoa(nextOffset)}
+						w.Header().Set("X-Next-Cursor", c.Format())
+					}
+					w.Write(b2)
+					return
+				}
+				slog.Info("GetEmailsByLabel failed, falling back to folder listing",
+					"accountID", accountID, "label", label, "error", err)
+			}
+		}
+	}
+
 	if unified {
 		scopedAccountIDs, err = h.monoAccessibleAccountIDs(r.Context())
 		if err != nil {
@@ -192,7 +251,6 @@ func (h *Handler) GetEmails(w http.ResponseWriter, r *http.Request) {
 	}
 	// cache disabled
 	if false {
-
 	}
 	if nextCursor != nil {
 		w.Header().Set("X-Next-Cursor", nextCursor.Format())

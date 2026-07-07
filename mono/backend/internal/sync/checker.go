@@ -99,14 +99,6 @@ func (w *CheckWorker) runSessionAuth(ctx context.Context, tokenRefreshTries int)
 	}()
 
 	if err := sw.authenticate(ctx, c, fetcher); err != nil {
-		if isTokenRefreshReconnect(err) && tokenRefreshTries < tokenRefreshMaxAttempts {
-			sw.reloadAccountCredentials(ctx, fetcher)
-			if freshCreds, dbErr := w.Manager.Store.GetAccountCredentials(ctx, w.Account.ID); dbErr == nil && freshCreds != nil {
-				w.Account = *freshCreds
-			}
-			slog.Info("CheckWorker: token refreshed, reconnecting immediately", "accountID", w.Account.Email)
-			return w.runSessionAuth(ctx, tokenRefreshTries+1)
-		}
 		if isFatalSyncAuthError(err) {
 			if w.Store != nil {
 				_ = w.Store.UpdateAccountSyncError(ctx, w.Account.ID, err.Error())

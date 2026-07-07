@@ -579,7 +579,7 @@ func (f *Fetcher) GetOrCreateFolder(ctx context.Context, accountID, name, path s
 	return folder, err
 }
 
-func (f *Fetcher) ProcessMessageStreamToFolder(ctx context.Context, accountID, folderPath string, msg *imapclient.FetchMessageData) (uint32, error) {
+func (f *Fetcher) ProcessMessageStreamToFolder(ctx context.Context, accountID, folderPath string, msg *imapclient.FetchMessageData, isGmail bool) (uint32, error) {
 	folder, err := f.GetOrCreateFolder(ctx, accountID, folderPath, folderPath)
 	if err != nil {
 		return 0, err
@@ -795,12 +795,74 @@ func (f *Fetcher) ProcessMessageStreamToFolder(ctx context.Context, accountID, f
 		email.IsRead = true
 	}
 
+	// Gmail: deduplicate by msg_id across labels — same email appears in multiple
+	// virtual "folders" with different UIDs. Track labels via junction table.
+	if isGmail && email.MsgID != "" {
+		existing, _ := f.Store.GetEmailByMsgIDAccount(ctx, email.MsgID, accountID)
+		if existing != nil {
+			// Email already exists from another label — append this folder as
+			// an additional label (don't replace existing ones).
+			existingLabels, err := f.Store.GetGmailLabels(ctx, existing.ID, accountID)
+			if err != nil {
+				slog.Info("Gmail: failed to get existing labels, skipping label append",
+					"emailID", existing.ID, "folder", folderPath, "error", err)
+			} else {
+				found := false
+				for _, l := range existingLabels {
+					if strings.EqualFold(l, folderPath) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					existingLabels = append(existingLabels, folderPath)
+					if err := f.Store.UpsertEmailLabels(ctx, existing.ID, accountID, existingLabels); err != nil {
+						slog.Info("Gmail: failed to upsert labels on existing email",
+							"emailID", existing.ID, "folder", folderPath, "error", err)
+					}
+				}
+			}
+			// Merge flags from this fetch with existing flags — always keep
+			// the most permissive state. This prevents state reversion when
+			// Gmail hasn't propagated \Seen to all labels yet.
+			isRead := existing.IsRead
+			isFlagged := existing.IsFlagged
+			isAnswered := existing.IsAnswered
+			for _, fl := range flags {
+				if strings.EqualFold(string(fl), "\\Seen") {
+					isRead = true
+				}
+				if strings.EqualFold(string(fl), "\\Flagged") {
+					isFlagged = true
+				}
+				if strings.EqualFold(string(fl), "\\Answered") {
+					isAnswered = true
+				}
+			}
+			if isRead != existing.IsRead || isFlagged != existing.IsFlagged || isAnswered != existing.IsAnswered {
+				f.Store.ApplyServerEmailFlags(ctx, existing.ID, accountID, isRead, isFlagged, isAnswered)
+			}
+			// Don't re-index FTS or re-save attachments — existing data is correct.
+			f.resolveAvatarAsync(email.SenderAddress, email.SenderName)
+			return uid, nil
+		}
+		// New email: save with labels. After saving, add the initial label.
+	}
+
 	// Phase 1: save email FIRST (so FK on attachments works) with HasAttachments=false
 	email.HasAttachments = false
 	isNew, err := f.Store.SaveEmailToFolder(ctx, email, folder.ID)
 	if err != nil {
 		os.Remove(bodyPath) // clean up orphaned EML
 		return uid, err
+	}
+
+	// Gmail: record the initial label for new emails
+	if isGmail {
+		if err := f.Store.UpsertEmailLabels(ctx, emailID, accountID, []string{folderPath}); err != nil {
+			slog.Info("Gmail: failed to set initial label on new email",
+				"emailID", emailID, "folder", folderPath, "error", err)
+		}
 	}
 
 	// Phase 2: save attachments via CAS (email row exists, FK will work)
@@ -1024,33 +1086,16 @@ func (f *Fetcher) handleSendNotification(ctx context.Context, accountID string, 
 }
 
 func (f *Fetcher) handleAutoDraft(ctx context.Context, accountID, emailID string, rule models.FilterRule) {
-	if f.AI == nil {
-		return
-	}
-	// Set initial placeholder so UI knows it's pending
+	if f.AI == nil { return }
 	_ = f.Store.SaveDraftReply(ctx, emailID, accountID, "[AI draft pending]")
-
 	_ = f.Store.EnqueueJob(ctx, "auto_draft", "{}", time.Now())
-	if f.JobNotify != nil {
-		select {
-		case f.JobNotify <- struct{}{}:
-		default:
-		}
-	}
+	if f.JobNotify != nil { select { case f.JobNotify <- struct{}{}: default: } }
 }
 
 func (f *Fetcher) handleForward(ctx context.Context, accountID, emailID string, rule models.FilterRule) {
-	if rule.ActionValue == "" {
-		return
-	}
-
+	if rule.ActionValue == "" { return }
 	_ = f.Store.EnqueueJob(ctx, "forward_email", "{}", time.Now())
-	if f.JobNotify != nil {
-		select {
-		case f.JobNotify <- struct{}{}:
-		default:
-		}
-	}
+	if f.JobNotify != nil { select { case f.JobNotify <- struct{}{}: default: } }
 }
 
 // generateAIDraft collects thread context and calls the AI gateway to generate a draft reply.

@@ -597,6 +597,10 @@ func (s *Storage) DeleteEmail(ctx context.Context, id string, accountID string) 
 		if err != nil {
 			return err
 		}
+		_, err = tx.ExecContext(ctx, "DELETE FROM email_labels_junction WHERE email_id = ? AND account_id = ?", id, accountID)
+		if err != nil {
+			return err
+		}
 		if accountID != "" {
 			_, err = tx.ExecContext(ctx, "DELETE FROM emails WHERE id = ? AND account_id = ?", id, accountID)
 		} else {
@@ -2512,4 +2516,89 @@ func (s *Storage) bulkMoveAndEnqueue(ctx context.Context, ids []string, accountI
 	}
 
 	return tx.Commit()
+}
+
+func isGmailSystemLabel(label string) bool {
+	return strings.HasPrefix(label, "\\")
+}
+
+func (s *Storage) GetEmailByMsgIDAccount(ctx context.Context, msgID, accountID string) (*models.Email, error) {
+	query := "SELECT id, account_id, folder_id, msg_id, uid, subject, sender_name, sender_address, recipient_address, cc_address, date_sent, is_read, is_flagged, is_answered, has_attachments, is_dirty_locally, in_reply_to, thread_id, draft_reply, draft_remote_uid, snippet, body_path, COALESCE(spf_pass,0), COALESCE(dkim_pass,0), is_pinned, snooze_until, is_muted, status, first_response_at, resolved_at, created_at FROM emails WHERE msg_id = ? AND account_id = ? LIMIT 1"
+	row := s.db.QueryRowContext(ctx, query, msgID, accountID)
+	var e models.Email
+	var dateSent, snoozeUntil, firstRespAt, resolvedAt, createdAt sql.NullString
+	err := row.Scan(&e.ID, &e.AccountID, &e.FolderID, &e.MsgID, &e.UID, &e.Subject,
+		&e.SenderName, &e.SenderAddress, &e.RecipientAddress, &e.CcAddress, &dateSent,
+		&e.IsRead, &e.IsFlagged, &e.IsAnswered, &e.HasAttachments, &e.IsDirtyLocally, &e.InReplyTo, &e.ThreadID,
+		&e.DraftReply, &e.DraftRemoteUID, &e.Snippet, &e.BodyPath, &e.SpfPass, &e.DkimPass,
+		&e.IsPinned, &snoozeUntil, &e.IsMuted, &e.Status, &firstRespAt, &resolvedAt, &createdAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	e.DateSent = parseTime(dateSent)
+	if snoozeUntil.Valid {
+		t := parseTime(snoozeUntil)
+		e.SnoozeUntil = &t
+	}
+	if firstRespAt.Valid {
+		t := parseTime(firstRespAt)
+		e.FirstResponseAt = &t
+	}
+	if resolvedAt.Valid {
+		t := parseTime(resolvedAt)
+		e.ResolvedAt = &t
+	}
+	e.CreatedAt = parseTime(createdAt)
+	return &e, nil
+}
+
+func (s *Storage) GetEmailsByLabel(ctx context.Context, accountID, label string, offset, limit int) ([]models.Email, error) {
+	cols := "e.id, e.account_id, e.folder_id, e.msg_id, e.uid, e.subject, e.sender_name, e.sender_address, e.recipient_address, e.cc_address, e.date_sent, e.is_read, e.is_flagged, e.is_answered, e.has_attachments, e.is_dirty_locally, e.in_reply_to, e.thread_id, e.draft_reply, e.draft_remote_uid, e.snippet, COALESCE(e.spf_pass,0), COALESCE(e.dkim_pass,0), e.is_pinned, e.snooze_until, e.is_muted, e.status, e.first_response_at, e.resolved_at, e.created_at"
+	query := "SELECT " + cols + " FROM emails e JOIN email_labels_junction j ON e.id = j.email_id WHERE e.account_id = ? AND j.label = ? AND (e.snooze_until IS NULL OR e.snooze_until <= datetime('now')) ORDER BY e.date_sent DESC LIMIT ? OFFSET ?"
+
+	rows, err := s.db.QueryContext(ctx, query, accountID, label, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var emails []models.Email
+	for rows.Next() {
+		var e models.Email
+		var dateSent, snoozeUntil, firstRespAt, resolvedAt, createdAt sql.NullString
+		err := rows.Scan(
+			&e.ID, &e.AccountID, &e.FolderID, &e.MsgID, &e.UID, &e.Subject,
+			&e.SenderName, &e.SenderAddress, &e.RecipientAddress, &e.CcAddress, &dateSent,
+			&e.IsRead, &e.IsFlagged, &e.IsAnswered, &e.HasAttachments, &e.IsDirtyLocally, &e.InReplyTo, &e.ThreadID,
+			&e.DraftReply, &e.DraftRemoteUID, &e.Snippet, &e.SpfPass, &e.DkimPass,
+			&e.IsPinned, &snoozeUntil, &e.IsMuted, &e.Status, &firstRespAt, &resolvedAt, &createdAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		e.DateSent = parseTime(dateSent)
+		if snoozeUntil.Valid {
+			t := parseTime(snoozeUntil)
+			e.SnoozeUntil = &t
+		}
+		if firstRespAt.Valid {
+			t := parseTime(firstRespAt)
+			e.FirstResponseAt = &t
+		}
+		if resolvedAt.Valid {
+			t := parseTime(resolvedAt)
+			e.ResolvedAt = &t
+		}
+		e.CreatedAt = parseTime(createdAt)
+		emails = append(emails, e)
+	}
+	return emails, rows.Err()
+}
+
+func (s *Storage) DeleteEmailLabels(ctx context.Context, emailID, accountID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM email_labels_junction WHERE email_id = ? AND account_id = ?`, emailID, accountID)
+	return err
 }

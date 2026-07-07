@@ -88,14 +88,6 @@ func (h *Handler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	req.InReplyTo = stripCRLF(req.InReplyTo)
 	req.References = stripCRLF(req.References)
 
-	if account.OAuthRefreshToken != "" {
-		refreshedAcc, err := h.RefreshAccountToken(r.Context(), account.ID)
-		if err != nil {
-			slog.Info("Failed to refresh OAuth token before sending", "error", err)
-		} else if refreshedAcc != nil {
-			account = refreshedAcc
-		}
-	}
 
 	if account.SMTPHost == "" || account.SMTPPort == 0 {
 		WriteJSONError(w, http.StatusBadRequest, "SMTP not configured for this account")
@@ -103,23 +95,6 @@ func (h *Handler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var client *smtp.Client
-	if account.OAuthAccessToken != "" {
-		client = smtp.NewOAuthClient(
-			account.SMTPHost,
-			int(account.SMTPPort),
-			account.Username,
-			account.OAuthAccessToken,
-			account.Email,
-		)
-	} else {
-		client = smtp.NewClient(
-			account.SMTPHost,
-			int(account.SMTPPort),
-			account.Username,
-			account.PasswordEncrypted,
-			account.Email,
-		)
-	}
 
 	fromAddr := account.Email
 	if account.Name != "" {

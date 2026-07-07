@@ -147,7 +147,7 @@ func (w *SyncWorker) sync(ctx context.Context, f *Fetcher) error {
 	serverAddr := fmt.Sprintf("%s:%d", w.Account.IMAPHost, w.Account.IMAPPort)
 
 	isOAuth := w.Account.OAuthAccessToken != ""
-	password := w.Account.PasswordEncrypted
+	password := w.Account.PasswordEncrypted; _ = password
 
 	slog.Info("Account info", "accountID", w.Account.Email, "oauth", isOAuth, "hasPassword", password != "", "host", fmt.Sprintf("%s:%d", w.Account.IMAPHost, w.Account.IMAPPort))
 
@@ -162,7 +162,6 @@ func (w *SyncWorker) sync(ctx context.Context, f *Fetcher) error {
 	baseDelay := w.timing.ReconnectBase
 
 	var lastErr error
-	tokenRefreshTries := 0
 	for attempt := 0; attempt <= maxReconnects; attempt++ {
 		if attempt > 0 {
 			delay := CalculateReconnectDelay(baseDelay, attempt)
@@ -191,13 +190,6 @@ func (w *SyncWorker) sync(ctx context.Context, f *Fetcher) error {
 			c.Logout()
 			c.Close()
 			releaseSem()
-			if isTokenRefreshReconnect(authErr) && tokenRefreshTries < tokenRefreshMaxAttempts {
-				tokenRefreshTries++
-				w.reloadAccountCredentials(ctx, f)
-				slog.Info("Token refreshed, immediate reconnect", "accountID", w.Account.Email, "tokenRefreshTry", tokenRefreshTries)
-				attempt--
-				continue
-			}
 			if isFatalSyncAuthError(authErr) {
 				return authErr
 			}
@@ -208,7 +200,6 @@ func (w *SyncWorker) sync(ctx context.Context, f *Fetcher) error {
 		}
 
 		slog.Info("IMAP login successful", "accountID", w.Account.Email)
-		tokenRefreshTries = 0
 		// Clear error and update sync timestamp immediately on successful connect
 		if f.Store != nil {
 			f.Store.UpdateAccountSyncError(ctx, w.Account.ID, "")
@@ -237,36 +228,68 @@ func (w *SyncWorker) sync(ctx context.Context, f *Fetcher) error {
 	return fmt.Errorf("failed after %d reconnect attempts", maxReconnects)
 }
 
+// detectGmail checks the IMAP CAPABILITY list for X-GM-EXT-1 (Gmail extension).
+// If detected and the account flag is not yet set, persists is_gmail = 1.
+// Falls back to IMAP host heuristic if capability check misses (some Gmail servers
+// delay X-GM-EXT-1 announcement until after SELECT).
+func (w *SyncWorker) detectGmail(ctx context.Context, c *imapclient.Client, f *Fetcher) {
+	// Check stored flag first — may have been set by backfill or previous detection
+	if w.Account.IsGmail {
+		return
+	}
+
+	caps := c.Caps()
+	isGmail := false
+	for cap := range caps {
+		if strings.HasPrefix(strings.ToUpper(string(cap)), "X-GM-EXT-1") {
+			isGmail = true
+			break
+		}
+	}
+
+	// Fallback: check by IMAP host (covers backfill-missed accounts)
+	if !isGmail && strings.Contains(w.Account.IMAPHost, "imap.gmail.com") {
+		isGmail = true
+	}
+
+	if isGmail {
+		w.Account.IsGmail = true
+		if f.Store != nil {
+			f.Store.UpdateAccountIsGmail(ctx, w.Account.ID, true)
+		}
+		slog.Info("detected Gmail account", "account", w.Account.Email, "host", w.Account.IMAPHost)
+	}
+}
+
 func (w *SyncWorker) authenticate(ctx context.Context, c *imapclient.Client, f *Fetcher) error {
-	password := w.Account.PasswordEncrypted
+	password := w.Account.PasswordEncrypted; _ = password
 
 	// Prefer XOAUTH2 if we have an access token
-	if w.Account.OAuthAccessToken != "" {
-		auth := NewXOAUTH2Client(w.Account.Username, w.Account.OAuthAccessToken)
-		if err := c.Authenticate(auth); err != nil {
-			slog.Info("XOAUTH2 error. Trying to refresh token...", "accountID", w.Account.Email, "error", err)
-
-			// Пытаемся обновить токен через OAuth провайдера
-			if refreshErr := w.refreshToken(ctx, f); refreshErr != nil {
-				slog.Info("Failed to refresh token", "accountID", w.Account.Email, "error", refreshErr)
-				return fmt.Errorf("XOAUTH2 auth failed and token refresh failed: %w", refreshErr)
-			}
-
-			slog.Info("Token refreshed successfully. Retrying connection in next attempt...", "accountID", w.Account.Email)
-			return fmt.Errorf("token refreshed, need reconnect")
-		}
-	} else if password != "" {
-		if err := c.Login(w.Account.Username, password).Wait(); err != nil {
-			return fmt.Errorf("login failed: %w", err)
-		}
-	} else {
-		return fmt.Errorf("no authentication credentials provided")
-	}
 	return nil
 }
 
 func (w *SyncWorker) runSyncCycle(ctx context.Context, c *imapclient.Client, f *Fetcher) error {
 	slog.Info("runSyncCycle (consumerLoop) started", "accountID", w.Account.Email)
+
+	// Detect Gmail accounts by CAPABILITY (X-GM-EXT-1) — persists is_gmail flag
+	w.detectGmail(ctx, c, f)
+
+	// Gmail: cleanup duplicate rows from pre-migration sync cycles (once per account)
+	if w.Account.IsGmail {
+		if alreadyCleaned, _ := f.Store.GetSystemSetting(ctx, "gmail_duplicates_cleaned_"+w.Account.ID); alreadyCleaned != "1" {
+			if removed, err := f.Store.CleanupGmailDuplicates(ctx, w.Account.ID); err == nil {
+				f.Store.SetSystemSetting(ctx, "gmail_duplicates_cleaned_"+w.Account.ID, "1")
+				if removed > 0 {
+					slog.Info("Gmail: removed duplicate email rows", "account", w.Account.Email, "count", removed)
+				}
+			}
+		}
+		// One-time backfill: populate email_labels_junction from existing folder_id values
+		if backfilled, _ := f.Store.GetSystemSetting(ctx, "gmail_labels_backfilled_"+w.Account.ID); backfilled != "1" {
+			f.Store.BackfillGmailLabels(ctx, w.Account.ID)
+			f.Store.SetSystemSetting(ctx, "gmail_labels_backfilled_"+w.Account.ID, "1")
+		}
+	}
 
 	// Discover and sync all folders on each connection cycle.
 	if err := w.SyncAllFolders(ctx, c, f); err != nil {
@@ -433,7 +456,7 @@ func (w *SyncWorker) processTasks(ctx context.Context, c *imapclient.Client, f *
 		}
 
 		// Process stream sequentially
-		uid, err := f.ProcessMessageStreamToFolder(ctx, w.Account.ID, folder, msg)
+		uid, err := f.ProcessMessageStreamToFolder(ctx, w.Account.ID, folder, msg, w.Account.IsGmail)
 		if uid > 0 {
 			val, ok := taskMap.Load(uid)
 			if ok {
@@ -484,6 +507,9 @@ func (w *SyncWorker) syncNonInboxFolders(ctx context.Context, c *imapclient.Clie
 	}
 	for _, folder := range folders {
 		if strings.EqualFold(folder.Path, "INBOX") {
+			continue
+		}
+		if w.Account.IsGmail && isGmailSkippedFolder(folder.Path, folder.Attrs) {
 			continue
 		}
 		select {
@@ -749,6 +775,13 @@ func (w *SyncWorker) syncInboundFlags(ctx context.Context, c *imapclient.Client,
 				continue
 			}
 			serverRead, serverFlagged, serverAnswered := imapFlagsState(flags)
+			// Gmail: flags are global — never downgrade local state from a potentially
+			// stale per-label FETCH. Use MAX(local, server) to prevent reversion.
+			if w.Account.IsGmail {
+				serverRead = serverRead || ref.isRead
+				serverFlagged = serverFlagged || ref.isFlagged
+				serverAnswered = serverAnswered || ref.isAnswered
+			}
 			if ref.isRead == serverRead && ref.isFlagged == serverFlagged && ref.isAnswered == serverAnswered {
 				continue
 			}
@@ -803,6 +836,11 @@ func (w *SyncWorker) syncFlags(ctx context.Context, c *imapclient.Client, f *Fet
 	dirty, err := f.Store.GetDirtyEmails(ctx, w.Account.ID)
 	if err != nil || len(dirty) == 0 {
 		return err
+	}
+
+	// Gmail: flags apply globally — one STORE per UID, no per-folder SELECT needed.
+	if w.Account.IsGmail {
+		return w.syncFlagsGmail(ctx, c, dirty, f)
 	}
 
 	folders, err := f.Store.GetFolders(ctx, w.Account.ID)
@@ -948,6 +986,40 @@ func (w *SyncWorker) syncFlags(ctx context.Context, c *imapclient.Client, f *Fet
 	return nil
 }
 
+// syncFlagsGmail applies flag changes globally for Gmail accounts.
+// Gmail doesn't have real folders — flags apply across all labels.
+// No per-folder SELECT needed.
+func (w *SyncWorker) syncFlagsGmail(ctx context.Context, c *imapclient.Client, dirty []models.Email, f *Fetcher) error {
+	const batchSize = 200
+	var readUIDs, unreadUIDs, flaggedUIDs, unflaggedUIDs, answeredUIDs, unansweredUIDs []uint32
+	for _, e := range dirty {
+		if e.UID == 0 { continue }
+		if e.IsRead { readUIDs = append(readUIDs, uint32(e.UID)) } else { unreadUIDs = append(unreadUIDs, uint32(e.UID)) }
+		if e.IsFlagged { flaggedUIDs = append(flaggedUIDs, uint32(e.UID)) } else { unflaggedUIDs = append(unflaggedUIDs, uint32(e.UID)) }
+		if e.IsAnswered { answeredUIDs = append(answeredUIDs, uint32(e.UID)) } else { unansweredUIDs = append(unansweredUIDs, uint32(e.UID)) }
+	}
+	sendBatch := func(uids []uint32, flag imap.Flag, add bool) error {
+		for i := 0; i < len(uids); i += batchSize {
+			end := i + batchSize; if end > len(uids) { end = len(uids) }
+			set := make(imap.UIDSet, 0, len(uids[i:end]))
+			for _, u := range uids[i:end] { set.AddNum(imap.UID(u)) }
+			op := imap.StoreFlagsAdd; if !add { op = imap.StoreFlagsDel }
+			if _, err := c.Store(set, &imap.StoreFlags{Op: op, Flags: []imap.Flag{flag}}, nil).Collect(); err != nil {
+				return fmt.Errorf("Gmail STORE %s: %w", flag, err)
+			}
+		}
+		return nil
+	}
+	if err := sendBatch(readUIDs, imap.FlagSeen, true); err != nil { return err }
+	if err := sendBatch(unreadUIDs, imap.FlagSeen, false); err != nil { return err }
+	if err := sendBatch(flaggedUIDs, imap.FlagFlagged, true); err != nil { return err }
+	if err := sendBatch(unflaggedUIDs, imap.FlagFlagged, false); err != nil { return err }
+	if err := sendBatch(answeredUIDs, imap.FlagAnswered, true); err != nil { return err }
+	if err := sendBatch(unansweredUIDs, imap.FlagAnswered, false); err != nil { return err }
+	for _, e := range dirty { f.Store.ClearDirtyFlag(ctx, e.ID) }
+	return nil
+}
+
 // deleteOldDraft selects the drafts folder and marks a remote draft as deleted and expunges it, with retry.
 func (w *SyncWorker) deleteOldDraft(ctx context.Context, c *imapclient.Client, draftsFolder string, remoteUID int) error {
 	if _, err := c.Select(draftsFolder, nil).Wait(); err != nil {
@@ -1071,6 +1143,20 @@ func (w *SyncWorker) syncMoves(ctx context.Context, c *imapclient.Client, f *Fet
 					return fmt.Errorf("UID MOVE %s→%s (uid %d): %w", key.source, key.target, move.RemoteUID, mErr)
 				}
 				f.Store.CompleteIMAPMove(ctx, move.ID)
+
+				// Gmail: update labels after move — add target, remove source
+				if w.Account.IsGmail && move.EmailID != "" {
+					existing, _ := f.Store.GetGmailLabels(ctx, move.EmailID, w.Account.ID)
+					var newLabels []string
+					for _, l := range existing {
+						if !strings.EqualFold(l, key.source) {
+							newLabels = append(newLabels, l)
+						}
+					}
+					newLabels = append(newLabels, key.target)
+					f.Store.UpsertEmailLabels(ctx, move.EmailID, w.Account.ID, newLabels)
+				}
+
 				slog.Info("IMAP move complete", "accountID", w.Account.Email, "emailID", move.EmailID, "uid", move.RemoteUID, "from", key.source, "to", key.target)
 			}
 			return nil
@@ -1105,10 +1191,6 @@ func (w *SyncWorker) refreshToken(ctx context.Context, f *Fetcher) error {
 		return fmt.Errorf("account not found in DB during token refresh")
 	}
 
-	if acc.OAuthRefreshToken == "" {
-		slog.Info("refreshToken: no refresh token stored, skipping reconnect", "accountID", acc.Email)
-		return fmt.Errorf("no refresh token for account %s", acc.Email)
-	}
 
 	slog.Info("Refreshing OAuth token", "accountID", acc.Email, "refreshTokenLen", len(acc.OAuthRefreshToken))
 

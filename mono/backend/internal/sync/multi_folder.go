@@ -25,12 +25,30 @@ func syncBatchDelayMs() time.Duration {
 	return 500 * time.Millisecond
 }
 
+// isGmailSkippedFolder returns true for Gmail folders that should not be
+// synced. Uses IMAP attributes (locale-independent) with name-based fallback.
+func isGmailSkippedFolder(path string, attrs []imap.MailboxAttr) bool {
+	for _, attr := range attrs {
+		switch attr {
+		case imap.MailboxAttrAll, imap.MailboxAttrTrash, imap.MailboxAttrNoSelect:
+			return true
+		}
+	}
+	// Fallback for servers that don't return attributes
+	lower := strings.ToLower(path)
+	return strings.Contains(lower, "[gmail]/all mail") ||
+		strings.Contains(lower, "[gmail]/trash") ||
+		strings.Contains(lower, "[gmail]/вся почта") ||
+		strings.Contains(lower, "[gmail]/корзина")
+}
+
 type FolderSync struct {
 	Name        string
 	Path        string
 	LastUID     uint32
 	UIDValidity uint64
 	FolderID    string
+	Attrs       []imap.MailboxAttr
 }
 
 // ListFolders returns folders with their LastUID loaded from DB when available
@@ -52,8 +70,9 @@ func (w *SyncWorker) ListFolders(ctx context.Context, c *imapclient.Client, f *F
 
 		item := item // capture
 		folders = append(folders, FolderSync{
-			Name: item.Mailbox,
-			Path: item.Mailbox,
+			Name:  item.Mailbox,
+			Path:  item.Mailbox,
+			Attrs: item.Attrs,
 		})
 	}
 
@@ -111,6 +130,10 @@ func (w *SyncWorker) SyncAllFolders(ctx context.Context, c *imapclient.Client, f
 
 	var firstErr error
 	for _, folder := range folders {
+		// Gmail: skip redundant virtual folders
+		if w.Account.IsGmail && isGmailSkippedFolder(folder.Path, folder.Attrs) {
+			continue
+		}
 		if err := w.syncFolder(ctx, c, f, folder); err != nil {
 			slog.Info(fmt.Sprintf("[%s] Failed to sync folder %s: %v", w.Account.Email, folder.Name, err))
 			if firstErr == nil {
@@ -302,7 +325,7 @@ func (w *SyncWorker) syncFolderByUID(ctx context.Context, c *imapclient.Client, 
 				break
 			}
 
-			uid, err := f.ProcessMessageStreamToFolder(ctx, w.Account.ID, folderPath, msg)
+			uid, err := f.ProcessMessageStreamToFolder(ctx, w.Account.ID, folderPath, msg, w.Account.IsGmail)
 			if err != nil {
 				slog.Warn(fmt.Sprintf("[%s] ProcessMessageStreamToFolder error for UID %d: %v",
 					w.Account.Email, uid, err))

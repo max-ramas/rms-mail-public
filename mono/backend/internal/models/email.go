@@ -37,6 +37,7 @@ type Account struct {
 	SystemDiscovered  bool       `json:"system_discovered"`
 	LastSeenAt        time.Time  `json:"last_seen_at"`
 	IsLocked          bool       `json:"is_locked"`
+	IsGmail           bool       `json:"is_gmail"`
 	AvatarURL         string     `json:"avatar_url"`
 	Color             string     `json:"color"`
 	SortOrder         int        `json:"sort_order"`

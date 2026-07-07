@@ -29,7 +29,7 @@ func (s *Storage) decryptPassword(encrypted string, domain string) (string, erro
 // ============================================================================
 
 func (s *Storage) GetAccounts(ctx context.Context) ([]models.Account, error) {
-	query := `SELECT COALESCE(id,''), COALESCE(email,''), COALESCE(name,''), COALESCE(provider,''), COALESCE(imap_host,''), COALESCE(imap_port,0), COALESCE(imap_ssl,0), COALESCE(imap_encryption,''), COALESCE(smtp_host,''), COALESCE(smtp_port,0), COALESCE(smtp_ssl,0), COALESCE(smtp_encryption,''), COALESCE(username,''), COALESCE(last_uid,0), COALESCE(uid_validity,0), COALESCE(ai_provider_config,'{}'), COALESCE(signature,''), COALESCE(is_active,1), COALESCE(last_sync_error,''), COALESCE(last_sync_at, '0001-01-01T00:00:00Z'), COALESCE(is_locked, 0), COALESCE(avatar_url, ''), COALESCE(color, ''), COALESCE(sort_order, 0), COALESCE(smart_categories, 1) FROM accounts WHERE is_active = 1`
+	query := `SELECT COALESCE(id,''), COALESCE(email,''), COALESCE(name,''), COALESCE(provider,''), COALESCE(imap_host,''), COALESCE(imap_port,0), COALESCE(imap_ssl,0), COALESCE(imap_encryption,''), COALESCE(smtp_host,''), COALESCE(smtp_port,0), COALESCE(smtp_ssl,0), COALESCE(smtp_encryption,''), COALESCE(username,''), COALESCE(last_uid,0), COALESCE(uid_validity,0), COALESCE(ai_provider_config,'{}'), COALESCE(signature,''), COALESCE(is_active,1), COALESCE(last_sync_error,''), COALESCE(last_sync_at, '0001-01-01T00:00:00Z'), COALESCE(is_locked, 0), COALESCE(avatar_url, ''), COALESCE(color, ''), COALESCE(sort_order, 0), COALESCE(smart_categories, 1), COALESCE(is_gmail, 0) FROM accounts WHERE is_active = 1`
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -39,9 +39,9 @@ func (s *Storage) GetAccounts(ctx context.Context) ([]models.Account, error) {
 	var accounts []models.Account
 	for rows.Next() {
 		var a models.Account
-		var imapSSL, smtpSSL, isActive, isLocked, smartCategories int
+		var imapSSL, smtpSSL, isActive, isLocked, smartCategories, isGmail int
 		var lastSyncAt sql.NullString
-		err := rows.Scan(&a.ID, &a.Email, &a.Name, &a.Provider, &a.IMAPHost, &a.IMAPPort, &imapSSL, &a.IMAPEncryption, &a.SMTPHost, &a.SMTPPort, &smtpSSL, &a.SMTPEncryption, &a.Username, &a.LastUID, &a.UIDValidity, &a.AIProviderConfig, &a.Signature, &isActive, &a.LastSyncError, &lastSyncAt, &isLocked, &a.AvatarURL, &a.Color, &a.SortOrder, &smartCategories)
+		err := rows.Scan(&a.ID, &a.Email, &a.Name, &a.Provider, &a.IMAPHost, &a.IMAPPort, &imapSSL, &a.IMAPEncryption, &a.SMTPHost, &a.SMTPPort, &smtpSSL, &a.SMTPEncryption, &a.Username, &a.LastUID, &a.UIDValidity, &a.AIProviderConfig, &a.Signature, &isActive, &a.LastSyncError, &lastSyncAt, &isLocked, &a.AvatarURL, &a.Color, &a.SortOrder, &smartCategories, &isGmail)
 		if err != nil {
 			return nil, err
 		}
@@ -50,6 +50,7 @@ func (s *Storage) GetAccounts(ctx context.Context) ([]models.Account, error) {
 		a.IsActive = isActive == 1
 		a.IsLocked = isLocked == 1
 		a.SmartCategories = smartCategories == 1
+		a.IsGmail = isGmail == 1
 		if lastSyncAt.Valid {
 			a.LastSyncAt = parseTime(lastSyncAt)
 		}
@@ -72,13 +73,13 @@ func (s *Storage) GetFirstRegisteredAccountEmail(ctx context.Context) (string, e
 }
 
 func (s *Storage) GetAccount(ctx context.Context, id string) (*models.Account, error) {
-	query := `SELECT COALESCE(id,''), COALESCE(email,''), COALESCE(name,''), COALESCE(provider,''), COALESCE(imap_host,''), COALESCE(imap_port,0), COALESCE(imap_ssl,0), COALESCE(imap_encryption,''), COALESCE(smtp_host,''), COALESCE(smtp_port,0), COALESCE(smtp_ssl,0), COALESCE(smtp_encryption,''), COALESCE(username,''), COALESCE(password_encrypted,''), COALESCE(oauth_access_token,''), COALESCE(oauth_refresh_token,''), COALESCE(last_uid,0), COALESCE(uid_validity,0), COALESCE(ai_provider_config,'{}'), COALESCE(signature,''), COALESCE(is_active,1), COALESCE(last_sync_error,''), COALESCE(last_sync_at, '0001-01-01T00:00:00Z'), COALESCE(is_locked, 0), COALESCE(avatar_url, ''), COALESCE(color, ''), COALESCE(sort_order, 0), COALESCE(smart_categories, 1) FROM accounts WHERE id = ?`
+	query := `SELECT COALESCE(id,''), COALESCE(email,''), COALESCE(name,''), COALESCE(provider,''), COALESCE(imap_host,''), COALESCE(imap_port,0), COALESCE(imap_ssl,0), COALESCE(imap_encryption,''), COALESCE(smtp_host,''), COALESCE(smtp_port,0), COALESCE(smtp_ssl,0), COALESCE(smtp_encryption,''), COALESCE(username,''), COALESCE(password_encrypted,''), COALESCE(oauth_access_token,''), COALESCE(oauth_refresh_token,''), COALESCE(last_uid,0), COALESCE(uid_validity,0), COALESCE(ai_provider_config,'{}'), COALESCE(signature,''), COALESCE(is_active,1), COALESCE(last_sync_error,''), COALESCE(last_sync_at, '0001-01-01T00:00:00Z'), COALESCE(is_locked, 0), COALESCE(avatar_url, ''), COALESCE(color, ''), COALESCE(sort_order, 0), COALESCE(smart_categories, 1), COALESCE(is_gmail, 0) FROM accounts WHERE id = ?`
 	row := s.db.QueryRowContext(ctx, query, id)
 
 	var a models.Account
-	var imapSSL, smtpSSL, isActive, isLocked, smartCategories int
+	var imapSSL, smtpSSL, isActive, isLocked, smartCategories, isGmail int
 	var lastSyncAt sql.NullString
-	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.Provider, &a.IMAPHost, &a.IMAPPort, &imapSSL, &a.IMAPEncryption, &a.SMTPHost, &a.SMTPPort, &smtpSSL, &a.SMTPEncryption, &a.Username, &a.PasswordEncrypted, &a.OAuthAccessToken, &a.OAuthRefreshToken, &a.LastUID, &a.UIDValidity, &a.AIProviderConfig, &a.Signature, &isActive, &a.LastSyncError, &lastSyncAt, &isLocked, &a.AvatarURL, &a.Color, &a.SortOrder, &smartCategories)
+	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.Provider, &a.IMAPHost, &a.IMAPPort, &imapSSL, &a.IMAPEncryption, &a.SMTPHost, &a.SMTPPort, &smtpSSL, &a.SMTPEncryption, &a.Username, &a.PasswordEncrypted, &a.OAuthAccessToken, &a.OAuthRefreshToken, &a.LastUID, &a.UIDValidity, &a.AIProviderConfig, &a.Signature, &isActive, &a.LastSyncError, &lastSyncAt, &isLocked, &a.AvatarURL, &a.Color, &a.SortOrder, &smartCategories, &isGmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -90,6 +91,7 @@ func (s *Storage) GetAccount(ctx context.Context, id string) (*models.Account, e
 	a.IsActive = isActive == 1
 	a.IsLocked = isLocked == 1
 	a.SmartCategories = smartCategories == 1
+	a.IsGmail = isGmail == 1
 	a.PasswordEncrypted = ""
 	a.OAuthAccessToken = ""
 	a.OAuthRefreshToken = ""
@@ -100,12 +102,12 @@ func (s *Storage) GetAccount(ctx context.Context, id string) (*models.Account, e
 }
 
 func (s *Storage) GetAccountCredentials(ctx context.Context, id string) (*models.Account, error) {
-	query := `SELECT COALESCE(id,''), COALESCE(email,''), COALESCE(name,''), COALESCE(provider,''), COALESCE(imap_host,''), COALESCE(imap_port,0), COALESCE(imap_ssl,0), COALESCE(imap_encryption,''), COALESCE(smtp_host,''), COALESCE(smtp_port,0), COALESCE(smtp_ssl,0), COALESCE(smtp_encryption,''), COALESCE(username,''), COALESCE(password_encrypted,''), COALESCE(oauth_access_token,''), COALESCE(oauth_refresh_token,''), COALESCE(last_uid,0), COALESCE(uid_validity,0), COALESCE(ai_provider_config,'{}'), COALESCE(signature,''), COALESCE(is_active,1), COALESCE(last_sync_error,''), COALESCE(last_sync_at, '0001-01-01T00:00:00Z'), COALESCE(is_locked, 0), COALESCE(avatar_url, ''), COALESCE(color, ''), COALESCE(sort_order, 0), COALESCE(smart_categories, 1) FROM accounts WHERE id = ? AND is_active = 1`
+	query := `SELECT COALESCE(id,''), COALESCE(email,''), COALESCE(name,''), COALESCE(provider,''), COALESCE(imap_host,''), COALESCE(imap_port,0), COALESCE(imap_ssl,0), COALESCE(imap_encryption,''), COALESCE(smtp_host,''), COALESCE(smtp_port,0), COALESCE(smtp_ssl,0), COALESCE(smtp_encryption,''), COALESCE(username,''), COALESCE(password_encrypted,''), COALESCE(oauth_access_token,''), COALESCE(oauth_refresh_token,''), COALESCE(last_uid,0), COALESCE(uid_validity,0), COALESCE(ai_provider_config,'{}'), COALESCE(signature,''), COALESCE(is_active,1), COALESCE(last_sync_error,''), COALESCE(last_sync_at, '0001-01-01T00:00:00Z'), COALESCE(is_locked, 0), COALESCE(avatar_url, ''), COALESCE(color, ''), COALESCE(sort_order, 0), COALESCE(smart_categories, 1), COALESCE(is_gmail, 0) FROM accounts WHERE id = ? AND is_active = 1`
 	row := s.db.QueryRowContext(ctx, query, id)
 	var a models.Account
-	var imapSSL, smtpSSL, isActive, isLocked, smartCategories int
+	var imapSSL, smtpSSL, isActive, isLocked, smartCategories, isGmail int
 	var lastSyncAt sql.NullString
-	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.Provider, &a.IMAPHost, &a.IMAPPort, &imapSSL, &a.IMAPEncryption, &a.SMTPHost, &a.SMTPPort, &smtpSSL, &a.SMTPEncryption, &a.Username, &a.PasswordEncrypted, &a.OAuthAccessToken, &a.OAuthRefreshToken, &a.LastUID, &a.UIDValidity, &a.AIProviderConfig, &a.Signature, &isActive, &a.LastSyncError, &lastSyncAt, &isLocked, &a.AvatarURL, &a.Color, &a.SortOrder, &smartCategories)
+	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.Provider, &a.IMAPHost, &a.IMAPPort, &imapSSL, &a.IMAPEncryption, &a.SMTPHost, &a.SMTPPort, &smtpSSL, &a.SMTPEncryption, &a.Username, &a.PasswordEncrypted, &a.OAuthAccessToken, &a.OAuthRefreshToken, &a.LastUID, &a.UIDValidity, &a.AIProviderConfig, &a.Signature, &isActive, &a.LastSyncError, &lastSyncAt, &isLocked, &a.AvatarURL, &a.Color, &a.SortOrder, &smartCategories, &isGmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -117,6 +119,7 @@ func (s *Storage) GetAccountCredentials(ctx context.Context, id string) (*models
 	a.IsActive = isActive == 1
 	a.IsLocked = isLocked == 1
 	a.SmartCategories = smartCategories == 1
+	a.IsGmail = isGmail == 1
 	dec, err := s.decryptPassword(a.PasswordEncrypted, "imap_password")
 	if err != nil {
 		return nil, err
@@ -247,6 +250,11 @@ func (s *Storage) UpdateAccountUIDValidity(ctx context.Context, id string, uidVa
 
 func (s *Storage) UpdateAccountLastUID(ctx context.Context, id string, lastUID uint32) error {
 	_, err := s.db.ExecContext(ctx, "UPDATE accounts SET last_uid = ? WHERE id = ?", lastUID, id)
+	return err
+}
+
+func (s *Storage) UpdateAccountIsGmail(ctx context.Context, accountID string, isGmail bool) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE accounts SET is_gmail = ? WHERE id = ?`, boolToInt(isGmail), accountID)
 	return err
 }
 

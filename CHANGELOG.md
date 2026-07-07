@@ -1,30 +1,153 @@
 # Changelog
 
+## [3.1.5] — 2026-07-07
+
+### Added
+
+#### Gmail Labels Support — Multi-Label Deduplication
+Gmail doesn't have real folders — only labels. One email appears in multiple "folders" with different UIDs. Previously each label was stored as a separate email row with independent read/delete state, causing inconsistent views across the UI.
+
+**Detection**: Gmail accounts are detected via IMAP `X-GM-EXT-1` capability on connect. The `is_gmail` flag is persisted and used throughout the sync pipeline.
+
+**Dedup**: `ProcessMessageStreamToFolder` checks `GetEmailByMsgIDAccount` before saving — same email in multiple labels becomes one row, with labels tracked via `email_labels_junction` table.
+
+**Flag sync**: `syncFlagsGmail` applies flags globally via `UID STORE FLAGS` (no per-folder SELECT). Includes `\Seen`, `\Flagged`, and `\Answered`.
+
+**Move sync**: `syncMoves` updates junction table after IMAP MOVE — removes source label, adds target.
+
+**Skipped folders**: `[Gmail]/All Mail` and `[Gmail]/Trash` excluded from sync (redundant — all emails covered by other labels).
+
+**Backfill**: `backfillGmailAccounts()` marks existing accounts with `imap.gmail.com` as Gmail on startup.
+
+**Cleanup**: `CleanupGmailDuplicates` merges pre-migration duplicate rows (same `msg_id` across folders) once per account.
+
+**API**: `GetEmails` routes Gmail folder queries through `GetEmailsByLabel` — JOINs `email_labels_junction` instead of filtering by `folder_id`.
+
+**Schema**: Migration 025 adds `accounts.is_gmail`, `email_labels_junction` table. No FK constraints (PostgreSQL partitioned tables limitation — application-level cascade in `DeleteEmail`).
+
+### Added
+
+#### Command Palette Shortcuts
+- **Cmd+K / Ctrl+K**: opens Command Palette
+- **Cmd+, / Ctrl+,**: navigates to Settings
+- Shortcuts displayed in Keyboard Shortcuts modal (Shift+?) header and navigation category
+- Added to `PREVENT_DEFAULT_KEYS` to prevent browser focus-search/settings hijacking
+
+### Fixed
+
+#### Email Viewer — 3-Second Text Stub Before Body Loads (All Editions)
+Clicking an email showed the plain-text snippet for 3–4 seconds before the full HTML body and thread interface loaded. Only the pulse skeleton should have been visible during loading.
+
+**Root cause**: Commit `cb34fd97` introduced a `setQueryData` cache seed with partial list data (snippet, no body/html) combined with `refetchOnMount: false` — React Query believed it had data, skipped the fetch. Body arrived accidentally via mark-read `invalidateQueries` 3 seconds later.
+
+**Fix**: Removed `setQueryData` seed (header renders from `selectedEmail` list data, not `emailQuery.data`). Removed `refetchOnMount: false`. Previously viewed emails still served from cache within `staleTime: 60_000`.
+
+#### CAS Storage — Nil Pointer Panic in Production
+`ProcessMessageStreamToFolder` panicked with `nil pointer dereference` on `f.CAS.Save()` for emails with attachments. Go interface nil trap.
+
+**Fix**: `var casIf sync.CASStore; if cas != nil { casIf = cas }` — explicit nil check before interface assignment.
+
+#### Login — DB Error vs Invalid Credentials
+`HandleLogin` returned generic 401 for both "wrong password" and "database connection failure". AuthGuard 401 response caused logout on transient DB errors.
+
+**Fix**: `GetAdminByEmail` uses `errors.Is(err, pgx.ErrNoRows)`. `HandleLogin` returns 503 on DB errors, 401 only for auth failures. `AuthGuard` retries verify once after 500ms on 401.
+
+#### Gmail Label Pagination — Missing X-Next-Cursor
+`GetEmails` Gmail routing sent responses without `X-Next-Cursor` header — frontend `useInfiniteQuery` stopped fetching after first page (35 emails with unread filter).
+
+**Fix**: Gmail label path now returns offset-based cursor via standard `Cursor{DateSent: time.Unix(offset+limit), ID}` format. Frontend `ParseCursor` round-trips correctly. Provides correct pagination with zero frontend changes.
+
+#### PostgreSQL — Schema Compatibility Fixes
+- `email_labels_junction` FK removed — partitioned `emails` table doesn't support FK references. Application-level cascade in `DeleteEmail` instead.
+- `emails_msg_id_account_key` unique index removed — can't create on partitioned table without partition key.
+- `COALESCE(is_gmail, false)` → `COALESCE(is_gmail, 0)` — type mismatch (integer vs boolean).
+- `UpdateAccountIsGmail` passes `0/1` instead of `bool` to INTEGER column.
+- `UpsertEmailLabels` passes `0/1` instead of `bool` to INTEGER `system` column.
+- `GetAccount`/`GetAccountCredentials` now scan `is_gmail` in both backends.
+
+#### Gmail Flag State Reversion — Read/Unread Toggle Fails
+When a Gmail email was marked as read, the flag appeared to change but later reverted. Root cause: dedup block applied flags from each label's IMAP fetch independently — if a second label's fetch showed `\Seen=false` (Gmail hadn't propagated the flag yet), `ApplyServerEmailFlags` overwrote `is_read=true` back to `false`.
+
+**Fix**: Dedup block now merges flags — takes the most permissive state across existing row + current fetch. `\Seen` never reverts to unread. `\Flagged` and `\Answered` treated identically.
+
+#### Redis Cache — Email Listing Stuck at First Page
+Redis `tryCache` returned cached responses without `X-Next-Cursor` headers, breaking infinite scroll pagination for all Redis-backed editions (MP, U). The cache body was stored, but per-request computed headers were not.
+
+**Fix**: Removed `tryCache` and `cacheSet` from `GET /api/emails` handler. Never cache paginated API responses that depend on per-request computed headers.
+
+#### SQLite Migration — `DO $$` Block Incompatibility
+Migration 025 used PostgreSQL `DO $$` syntax for column addition. SQLite rejected it with "near DO: syntax error", crashing backend bootstrap for Mono edition.
+
+**Fix**: Created `025_gmail_labels_mono.sql` with plain `ALTER TABLE ADD COLUMN` (compatible with SQLite's `isBenignSQLiteMigrationError` handler).
+
+#### Gmail Detection — CAPABILITY Miss
+`detectGmail` relied solely on `X-GM-EXT-1` in `c.Caps()`, but some Gmail servers delay announcing this capability until after SELECT. Accounts were silently not detected as Gmail.
+
+**Fix**: Added IMAP host fallback (`imap.gmail.com`) and persisted-flag re-check. Detection is now two-tier: capability first, host heuristic second.
+
+#### Gmail — Inbound Flag Reversion
+`syncInboundFlags` processed Gmail accounts with per-folder FETCH + `ApplyServerEmailFlags`. If one label's flags were stale (Gmail propagation delay), server-side state overwrote locally-synced flags — `is_read=true` reverted to `false`.
+
+**Fix**: For Gmail accounts, `syncInboundFlags` now merges flags — `MAX(local, server)`. `\Seen`, `\Flagged`, `\Answered` never downgrade local state. Dirty emails (`is_dirty_locally=1`) excluded by existing query filter.
+
+#### Gmail — Locale-Dependent All Mail/Trash Skip
+`isGmailSkippedFolder` matched English folder names only (`"all mail"`, `"trash"`). On non-English Gmail locales (Russian `Вся почта`/`Корзина`, German `Alle Nachrichten`/`Papierkorb`, etc.) both folders were synced — creating guaranteed duplicate rows for every email.
+
+**Fix**: Switched to IMAP attributes (`\All`, `\Trash`, `\Noselect`) — locale-independent per RFC 6154. Fallback to known localized names (English, Russian) for servers not returning attributes.
+
+#### Gmail — Label Backfill
+Existing Gmail emails synced before label support had no entries in `email_labels_junction`. `GetEmailsByLabel` returned empty → folders appeared empty despite having emails.
+
+**Fix**: `BackfillGmailLabels` — one-time operation populates `email_labels_junction` from `emails.folder_id` → `folders.path` for all Gmail accounts. Runs once per account via `system_settings` flag.
+
+#### Gmail — Silent Label Write Failures
+`UpsertEmailLabels` errors were silently ignored in dedup block and new-email path. If the junction table didn't exist or a write failed, labels were lost with no diagnostic.
+
+**Fix**: All `UpsertEmailLabels`/`GetGmailLabels` calls now log errors with context (emailID, folder, error).
+
+#### Attachment Upload — Empty UUID in PostgreSQL
+Uploading files for email compose failed silently on PostgreSQL (Unified/MonoPro). The handler set `EmailID: ""` which PostgreSQL rejected with `invalid input syntax for type uuid`. The user saw no error because the frontend `catch` block only logged in development mode.
+
+**Fix**: `EmailID` and `AccountID` now use sentinel UUID `00000000-0000-0000-0000-000000000000` instead of empty string. Frontend `catch` always shows error toast. Backend added `h.CAS == nil` guard (503 instead of nil panic), and all per-file errors logged via `slog.Info`.
+
+### Changed
+
+- **Dockerfiles**: Russian comments → English. M2-specific compilation comment → generic.
+- **Backend Dockerfile**: removed stale `ARG PUBLIC_KEY=""`, removed `schema.sql` copy (Mono-only).
+- **License ping**: `LICENSE_SERVER_URL` env override removed — uses hardcoded `https://license.rms-ds.com`.
+- **Mono edition**: `InitHK()`, periodic update pings with `latest_version`/`release_notes` restored.
+
 ## [3.1.4] — 2026-07-03
 
 ### Fixed
 
-#### Email Viewer — 3-Second Text Stub Before Body Loads
+#### Email Viewer — 3-Second Text Stub Before Body Loads (All Editions)
 Clicking an email showed the plain-text snippet for 3–4 seconds before the full HTML body and thread interface loaded. Only the pulse skeleton should have been visible during loading.
 
-**Root cause**: A `setQueryData` call seeded React Query's cache with partial list-item data (email metadata with `snippet` but without `body`, `html`, or `attachments`). Combined with `refetchOnMount: false` on `useEmail`, the query believed it already had data — `isLoading` stayed `false`, `EmailBody` rendered `{body || snippet}` showing the snippet. The real body arrived only accidentally via the mark-read `invalidateQueries` 3 seconds later.
+**Root cause**: Commit `cb34fd97` introduced a `setQueryData` call in `handleSelectEmailList` that seeded React Query's cache with partial list-item data (email metadata with `snippet` but without `body`, `html`, or `attachments`). Combined with `refetchOnMount: false` on `useEmail`, the query believed it already had data — `isLoading` stayed `false`, `EmailBody` rendered `{body || snippet}` showing the snippet. The real body arrived only accidentally via the mark-read `invalidateQueries` 3 seconds later (or never for already-read emails — they waited for the 30-second poll).
 
-**Fix**: Removed `setQueryData` cache seed in `handleSelectEmailList` and removed `refetchOnMount: false` from `useEmail`. New emails always trigger an immediate body fetch while maintaining cache for previously viewed emails within `staleTime: 60_000`.
+**Fix**:
+- **Removed `setQueryData` cache seed** in `handleSelectEmailList` (`useMailInboxPage.tsx`). The email header (subject, sender, date) is rendered from `selectedEmail` (list data), not from `emailQuery.data`, so the seed provided zero visible benefit.
+- **Removed `refetchOnMount: false`** from `useEmail` (`useEmailQueries.ts`). Now defaults to `true` — new emails always trigger an immediate `GET /api/emails/:id` fetch.
+- Previously viewed emails within `staleTime: 60_000` are still served from cache instantly — no unnecessary refetches.
 
 #### CAS Storage — Nil Pointer Panic in Production
-`ProcessMessageStreamToFolder` panicked with `nil pointer dereference` on `f.CAS.Save()` for emails with attachments. Go interface nil trap: a nil `*attachment.CASStorage` passed to an `interface{}` parameter wraps as non-nil.
+`ProcessMessageStreamToFolder` panicked with `nil pointer dereference` on `f.CAS.Save()` when processing emails with attachments. Go's interface nil trap: a nil `*attachment.CASStorage` passed to an `interface{}` parameter wraps as non-nil.
 
-**Fix**: `var casIf sync.CASStore; if cas != nil { casIf = cas }` — explicit nil check before passing to interface.
+**Fix**: `var casIf sync.CASStore; if cas != nil { casIf = cas }` in `cmd/server/main.go` — explicit nil check before assignment to interface-typed variable.
 
 #### Login — DB Error vs Invalid Credentials
 `HandleLogin` returned generic 401 for both "wrong password" and "database connection failure". AuthGuard responded to 401 with a redirect to `/login` — transient DB errors caused logout.
 
-**Fix**: `GetAdminByEmail` uses `errors.Is(err, pgx.ErrNoRows)`. `HandleLogin` returns 503 on DB errors, 401 only for genuine auth failures. `AuthGuard` retries verify once after 500ms on 401.
+**Fix**:
+- `GetAdminByEmail` uses `errors.Is(err, pgx.ErrNoRows)` for precise "not found" detection.
+- `HandleLogin` returns 503 on DB errors, 401 only for genuine auth failures.
+- `AuthGuard` retries `/api/auth/verify` once after 500ms on 401 (catch token sync race).
 
 ### Changed
 
-- **Dockerfiles**: English comments throughout (frontend + backend).
-- **Mono license pinger**: Hardcoded `https://license.rms-ds.com` without env override. Update notifications (`latest_version`, `release_notes`) + `InitHK()` restored for Mono edition.
+- **Backend Dockerfile**: M2-specific compilation comment → generic "Cross-compile for the target architecture".
+- **Frontend Dockerfile**: Russian comments → English.
 
 ## [3.1.3] — 2026-07-01
 

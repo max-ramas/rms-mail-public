@@ -291,6 +291,14 @@ export const ALL_COMMANDS: Command[] = [
     context: "any",
   },
   {
+    id: "navigation:command-palette",
+    labelKey: "navigation_command_palette",
+    category: "navigation",
+    icon: "Search",
+    defaultKeys: ["Cmd+K", "Cmd+Shift+P"],
+    context: "any",
+  },
+  {
     id: "navigation:go-drafts",
     labelKey: "navigation_go_drafts",
     category: "navigation",

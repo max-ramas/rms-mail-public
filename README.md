@@ -39,9 +39,9 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable (v3.1.4)
-- Unified edition: Stable (v3.1.4)
-- Mono Pro edition: Stable (v3.1.4)
+- Mono edition: Stable (v3.1.5)
+- Unified edition: Stable (v3.1.5)
+- Mono Pro edition: Stable (v3.1.5)
 - Teams edition: Planned
 
 Current development priorities:
@@ -518,6 +518,26 @@ RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live la
 ---
 
 ## 🚀 Quick Start
+
+### All editions
+
+```bash
+# 1. Clone the repository and navigate to the project directory
+git clone https://github.com/max-ramas/rms-mail-public.git
+cd rms-mail-public
+
+# 2. Run configuration script
+./configure.sh
+
+# 3. Fire it up!
+docker compose up -d
+
+# Check status
+docker compose ps
+
+```
+
+For **HTTPS production** (aaPanel, nginx, Caddy), see **[reverse-proxy.md](./reverse-proxy.md)**
 
 ### Mono
 

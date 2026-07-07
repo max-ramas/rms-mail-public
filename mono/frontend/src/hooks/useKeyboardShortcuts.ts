@@ -49,15 +49,19 @@ const PREVENT_DEFAULT_KEYS = new Set([
   "Cmd+N",
   "Cmd+T",
   "Cmd+W",
+  "Cmd+K",
   "Ctrl+N",
   "Ctrl+T",
   "Ctrl+W",
+  "Ctrl+K",
   "Cmd+S",
   "Ctrl+S",
   "Cmd+P",
   "Ctrl+P",
   "Cmd+A",
   "Ctrl+A",
+  "Cmd+,",
+  "Ctrl+,",
 ]);
 
 // ============================================================================

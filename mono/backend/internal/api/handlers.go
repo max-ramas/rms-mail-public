@@ -84,6 +84,8 @@ type Handler struct {
 	}
 	ticketStore *TicketStore
 	creationMu  sync.Mutex
+	gmailMu     sync.RWMutex
+	gmailCache  map[string]bool
 }
 
 func (h *Handler) cacheGet(ctx context.Context, key string) (string, bool) {

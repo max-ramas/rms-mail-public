@@ -2,16 +2,31 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ToastProvider } from "@/hooks/useToast";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { HotkeyManager } from "@/lib/HotkeyManager";
 import { ChunkLoadRecovery } from "@/components/chunk-load-recovery";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+
   // Start the global HotkeyManager singleton once on mount
   useEffect(() => {
     HotkeyManager.start();
   }, []);
+
+  // Global shortcuts: Cmd+, → Settings
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.code === "Comma" || e.key === ",")) {
+        e.preventDefault();
+        router.push("/settings");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [router]);
 
   const [queryClient] = useState(
     () =>
@@ -41,7 +56,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ChunkLoadRecovery />
         <ToastProvider>
-          {children}
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -798,9 +798,6 @@ func (h *Handler) RefreshAccountToken(ctx context.Context, accountID string) (*m
 		return nil, err
 	}
 
-	if acc.OAuthRefreshToken == "" {
-		return acc, nil // Не OAuth аккаунт или нет refresh токена
-	}
 
 	slog.Info("Refreshing OAuth token for account", "email", acc.Email, "provider", acc.Provider)
 

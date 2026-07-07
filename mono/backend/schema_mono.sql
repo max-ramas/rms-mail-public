@@ -109,8 +109,7 @@ CREATE TABLE IF NOT EXISTS attachments (
     size INTEGER DEFAULT 0,
     hash TEXT DEFAULT '',
     path TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (email_id, account_id) REFERENCES emails(id, account_id) ON DELETE CASCADE
+    created_at TEXT DEFAULT (datetime('now'))
 );
 
 -- Email tags
@@ -120,8 +119,7 @@ CREATE TABLE IF NOT EXISTS email_tags (
     account_id TEXT,
     tag TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(email_id, tag),
-    FOREIGN KEY (email_id, account_id) REFERENCES emails(id, account_id) ON DELETE CASCADE
+    UNIQUE(email_id, tag)
 );
 
 -- Templates
@@ -148,8 +146,7 @@ CREATE TABLE IF NOT EXISTS email_labels (
     email_id TEXT,
     label_id TEXT REFERENCES labels(id) ON DELETE CASCADE,
     account_id TEXT,
-    PRIMARY KEY (email_id, label_id, account_id),
-    FOREIGN KEY (email_id, account_id) REFERENCES emails(id, account_id) ON DELETE CASCADE
+    PRIMARY KEY (email_id, label_id, account_id)
 );
 
 -- Filter rules
@@ -208,8 +205,7 @@ CREATE TABLE IF NOT EXISTS email_comments (
     author_id TEXT REFERENCES users(id),
     body TEXT NOT NULL,
     internal INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (email_id, account_id) REFERENCES emails(id, account_id) ON DELETE CASCADE
+    created_at TEXT DEFAULT (datetime('now'))
 );
 
 -- Contacts
@@ -289,8 +285,7 @@ CREATE TABLE IF NOT EXISTS imap_move_queue (
     retry_count INTEGER DEFAULT 0,
     last_error TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(email_id),
-    FOREIGN KEY (email_id, account_id) REFERENCES emails(id, account_id) ON DELETE CASCADE
+    UNIQUE(email_id)
 );
 
 ALTER TABLE attachments ADD COLUMN content_id TEXT DEFAULT '';
@@ -440,3 +435,17 @@ WHERE unread_count = 0;
 -- Attachments performance indexes for CAS dedup and email-attachment lookups
 CREATE INDEX IF NOT EXISTS idx_attachments_hash ON attachments(hash);
 CREATE INDEX IF NOT EXISTS idx_attachments_email_id ON attachments(email_id, created_at);
+
+-- Migration 025: Gmail labels support
+-- Phase 1: Gmail detection flag
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_gmail INTEGER DEFAULT 0;
+
+-- Phase 2: Email labels junction table (for Gmail multi-label tracking)
+CREATE TABLE IF NOT EXISTS email_labels_junction (
+    email_id  TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    label     TEXT NOT NULL,
+    system    INTEGER DEFAULT 0,
+    PRIMARY KEY (email_id, account_id, label)
+);
+CREATE INDEX IF NOT EXISTS idx_email_labels_junction_label ON email_labels_junction (account_id, label);

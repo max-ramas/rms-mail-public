@@ -1,6 +1,6 @@
 module rmsmail
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/aymerick/douceur v0.2.0

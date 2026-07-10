@@ -39,9 +39,9 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable (v3.1.5)
-- Unified edition: Stable (v3.1.5)
-- Mono Pro edition: Stable (v3.1.5)
+- Mono edition: Stable (v3.1.6)
+- Unified edition: Stable (v3.1.6)
+- Mono Pro edition: Stable (v3.1.6)
 - Teams edition: Planned
 
 Current development priorities:
@@ -819,3 +819,9 @@ If you have any questions, architectural suggestions, or commercial inquiries, f
 AGPLv3
 
 Our customers can request source code access under NDA for security review, compliance, or integration purposes.
+
+---
+
+<div align="center">
+<sub>Built by <a href="https://ramzaeff.com">Maksim Ramzaev</a> · <a href="https://rms-ds.com">RMS Digital Services</a></sub>
+</div>

@@ -1,5 +1,25 @@
 # Changelog
 
+## [3.1.6] — 2026-07-11
+
+### Fixed
+
+#### Attachment Upload — Empty UUID in PostgreSQL
+Uploading files for email compose failed silently on PostgreSQL (Unified/MonoPro). The handler set `EmailID: ""` which PostgreSQL rejected with `invalid input syntax for type uuid`. The user saw no error because the frontend `catch` block only logged in development mode.
+
+**Fix**: `EmailID` and `AccountID` now use sentinel UUID `00000000-0000-0000-0000-000000000000` instead of empty string. Frontend `catch` always shows error toast. Backend added `h.CAS == nil` guard (503 instead of nil panic), and all per-file errors logged via `slog.Info`.
+
+#### Gmail Sync — Audit Fixes
+Code audit revealed several issues in the dedup and cleanup pipeline:
+
+- **`GetEmailByMsgIDAccount` error swallowed** — transient DB error caused dedup miss → duplicate email rows. Now logs error and saves as new rather than silently skipping.
+- **`CleanupGmailDuplicates` error handling** — folder-path query error silently swallowed; orphaned junction rows not cleaned for deleted duplicates. Both fixed.
+- **`ApplyServerEmailFlags` error ignored** — flag merge result silently dropped on write failure. Now logged.
+- **Unnecessary COUNT query** in SQLite `BackfillGmailLabels` removed.
+
+#### PostgreSQL Flag Toggles — Missing `is_dirty_locally`
+`ToggleFlagEmail`, `TogglePinEmail`, `ToggleMuteEmail` omitted `is_dirty_locally = true` in PostgreSQL — flags/pins/mute silently reverted on next sync cycle. Fixed. Affected only Unified and MonoPro editions.
+
 ## [3.1.5] — 2026-07-07
 
 ### Added

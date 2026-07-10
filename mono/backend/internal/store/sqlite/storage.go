@@ -511,9 +511,7 @@ func (s *Storage) BackfillGmailLabels(ctx context.Context, accountID string) err
 	if err != nil {
 		return err
 	}
-	n, _ := s.db.ExecContext(ctx, `SELECT COUNT(*) FROM email_labels_junction WHERE account_id = ?`, accountID)
 	slog.Info("Gmail: backfilled labels from folder_id", "accountID", accountID)
-	_ = n
 	return nil
 }
 
@@ -574,18 +572,22 @@ func (s *Storage) CleanupGmailDuplicates(ctx context.Context, accountID string) 
 			if bestID == "" { continue }
 
 			// Collect all folder_ids as labels from ALL rows
-			folderRows, _ := tx.QueryContext(ctx,
+			folderRows, err := tx.QueryContext(ctx,
 				`SELECT DISTINCT f.path FROM emails e JOIN folders f ON e.folder_id = f.id WHERE e.msg_id = ? AND e.account_id = ? AND f.path != ''`, msgID, accountID)
-			if folderRows != nil {
-				for folderRows.Next() {
-					var path string
-					if folderRows.Scan(&path) == nil { labels = append(labels, path) }
-				}
-				folderRows.Close()
+			if err != nil {
+				return err
 			}
+			for folderRows.Next() {
+				var path string
+				if err := folderRows.Scan(&path); err == nil {
+					labels = append(labels, path)
+				}
+			}
+			folderRows.Close()
 
 			// Delete duplicate rows
 			for _, did := range deleteIDs {
+				tx.ExecContext(ctx, "DELETE FROM email_labels_junction WHERE email_id = ? AND account_id = ?", did, accountID)
 				tx.ExecContext(ctx, "DELETE FROM emails_fts WHERE email_id = ?", did)
 				tx.ExecContext(ctx, "DELETE FROM emails WHERE id = ? AND account_id = ?", did, accountID)
 				removed++

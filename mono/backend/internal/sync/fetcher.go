@@ -798,8 +798,10 @@ func (f *Fetcher) ProcessMessageStreamToFolder(ctx context.Context, accountID, f
 	// Gmail: deduplicate by msg_id across labels — same email appears in multiple
 	// virtual "folders" with different UIDs. Track labels via junction table.
 	if isGmail && email.MsgID != "" {
-		existing, _ := f.Store.GetEmailByMsgIDAccount(ctx, email.MsgID, accountID)
-		if existing != nil {
+		existing, err := f.Store.GetEmailByMsgIDAccount(ctx, email.MsgID, accountID)
+		if err != nil {
+			slog.Info("Gmail: dedup lookup failed, saving as new", "msgID", email.MsgID, "folder", folderPath, "error", err)
+		} else if existing != nil {
 			// Email already exists from another label — append this folder as
 			// an additional label (don't replace existing ones).
 			existingLabels, err := f.Store.GetGmailLabels(ctx, existing.ID, accountID)
@@ -840,10 +842,13 @@ func (f *Fetcher) ProcessMessageStreamToFolder(ctx context.Context, accountID, f
 				}
 			}
 			if isRead != existing.IsRead || isFlagged != existing.IsFlagged || isAnswered != existing.IsAnswered {
-				f.Store.ApplyServerEmailFlags(ctx, existing.ID, accountID, isRead, isFlagged, isAnswered)
+				if _, err := f.Store.ApplyServerEmailFlags(ctx, existing.ID, accountID, isRead, isFlagged, isAnswered); err != nil {
+					slog.Info("Gmail: failed to apply server flags on dedup", "emailID", existing.ID, "error", err)
+				}
 			}
 			// Don't re-index FTS or re-save attachments — existing data is correct.
 			f.resolveAvatarAsync(email.SenderAddress, email.SenderName)
+			slog.Debug("Gmail: dedup match, appended label", "emailID", existing.ID, "folder", folderPath, "uid", uid)
 			return uid, nil
 		}
 		// New email: save with labels. After saving, add the initial label.

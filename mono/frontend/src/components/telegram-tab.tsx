@@ -150,7 +150,7 @@ export function TelegramTab() {
                 {t("telegram_bot_configured_desc")}
               </p>
               <a
-                href={`https://t.me/${botUsername}`}
+                href={`https://telegram.dog/${botUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs shadow-md transition-all hover:scale-[1.03] mt-1"
@@ -189,7 +189,7 @@ export function TelegramTab() {
                       {t.rich("telegram_bot_step1_desc", {
                         link: (chunks) => (
                           <a
-                            href="https://t.me/BotFather"
+                            href="https://telegram.dog/BotFather"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-primary hover:underline font-medium inline-flex items-center gap-0.5"
@@ -327,7 +327,7 @@ export function TelegramTab() {
                   </p>
                   <div className="pt-2 flex flex-col gap-1.5">
                     <a
-                      href="https://t.me/userinfobot"
+                      href="https://telegram.dog/userinfobot"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
@@ -336,7 +336,7 @@ export function TelegramTab() {
                       <ExternalLink className="w-3 h-3" />
                     </a>
                     <a
-                      href="https://t.me/KeepSilenceBot"
+                      href="https://telegram.dog/KeepSilenceBot"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
@@ -381,7 +381,7 @@ export function TelegramTab() {
                   <div className="pt-2">
                     {botConfigured && botUsername ? (
                       <a
-                        href={`https://t.me/${botUsername}`}
+                        href={`https://telegram.dog/${botUsername}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs shadow-md transition-all hover:scale-[1.03]"

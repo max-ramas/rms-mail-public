@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.1.6] — 2026-07-11
+## [3.1.6] — 2026-07-13
 
 ### Fixed
 
@@ -19,6 +19,12 @@ Code audit revealed several issues in the dedup and cleanup pipeline:
 
 #### PostgreSQL Flag Toggles — Missing `is_dirty_locally`
 `ToggleFlagEmail`, `TogglePinEmail`, `ToggleMuteEmail` omitted `is_dirty_locally = true` in PostgreSQL — flags/pins/mute silently reverted on next sync cycle. Fixed. Affected only Unified and MonoPro editions.
+
+#### Phantomcreds — Secrets Removed from Docker Compose
+Hardcoded PostgreSQL connection strings with password interpolation removed from `docker-compose-mp.yml` and `docker-compose-u.yml`. Backend now constructs `DATABASE_URL` from individual env vars when not set directly.
+
+#### Telegram Domain — `t.me` → `telegram.dog`
+`t.me` domain blocked by ISPs. All Telegram links in `telegram-tab.tsx` changed to `telegram.dog`.
 
 ## [3.1.5] — 2026-07-07
 

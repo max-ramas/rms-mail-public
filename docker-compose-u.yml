@@ -66,7 +66,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-rmsmail}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rms-mail}?sslmode=prefer
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}

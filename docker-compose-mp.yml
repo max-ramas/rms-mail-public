@@ -59,8 +59,12 @@ services:
     restart: unless-stopped
     networks:
       - rms-mail
-    ports:
-      - "${PORT:-8080}:8080"
+    # Host publish disabled — API/MCP/SSE go through frontend :3000 rewrites (same as Mono).
+    # Uncomment for direct backend debugging only:
+    # ports:
+    #   - "${PORT:-8080}:8080"
+    expose:
+      - "8080"
     user: "0:0"
     env_file:
       - .env
@@ -71,7 +75,8 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       JWT_SECRET: ${JWT_SECRET}
       CAMO_HMAC_KEY: ${CAMO_HMAC_KEY:-}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL must be set}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       FRONTEND_URL: ${FRONTEND_URL:-}
       PUBLIC_URL: ${PUBLIC_URL:-}

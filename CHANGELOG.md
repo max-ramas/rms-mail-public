@@ -1,5 +1,72 @@
 # Changelog
 
+## [3.1.7] — 2026-07-23
+
+### Security / Deploy (post-audit hardening)
+
+- **CI**: fork PRs run on `ubuntu-latest`; same-repo pushes/PRs stay on self-hosted.
+- **Git**: stop tracking backend binaries / SQLite WAL-SHM (`.gitignore` + index cleanup).
+- **MonoPro**: `ADMIN_EMAIL` required at startup; removed first-registered-user admin fallback.
+- **Setup cookie**: `HandleSetup` uses `rms_token` via `SetTokenCookie` (was `auth_token`).
+- **Rate limit**: honor `X-Forwarded-For` / `X-Real-IP` only when `RemoteAddr` is in `TRUSTED_PROXIES`.
+- **MCP auth**: validate via `key_hash` (SHA-256 + constant-time); encrypted key still stored for UI view.
+- **Camo**: `CAMO_HMAC_KEY` required in production for U/MP; Mono may omit it and derive from `ENCRYPTION_KEYS`.
+- **Compose U/MP**: backend `expose` only (proxy via frontend `:3000`); keep `user: "0:0"`.
+- **IDLE INBOX**: force expunge reconcile on IDLE wake; skip SEARCH only when local count is strictly behind server.
+- **FE**: coalesce list refresh 800ms; drop infinite-query 30s poll after warmup; periodic SSE fallback 60s.
+- **Sync**: `inboundFlagSyncLimit` 400 (was 2000).
+- **Build**: composite `Dockerfile` injects `AppVersion`; `package-lock.json` aligned to 3.1.7.
+- **CI Playwright**: E2E runs on GitHub-hosted only (fork PRs); self-hosted skips Playwright (no sudo for `--with-deps`).
+
+### Fixed
+
+#### Mono / MonoPro Login — IMAP Network Errors as «invalid credentials»
+Production Mono and MonoPro showed `invalid credentials` while sync/IDLE for the same mailbox kept working. Logs showed `connection reset`, `deadline exceeded`, and `use of closed network connection` against the IMAP host on `:993`.
+
+**Root cause**:
+- `tryIMAPLogin` treated **any** Login/Authenticate failure as a wrong password (including TCP resets) and returned early.
+- For SSL it also probed STARTTLS and plain on port 993, amplifying failed connections under IDLE load.
+- Offline bcrypt fallback used `UPDATE admins` only — Mono often had **no** admin row, so fallback always became 401.
+
+**Fix**:
+- Classify `imapTransient` vs `imapAuthRejected` (unit-tested).
+- IMAPS (`ssl`): TLS only, one retry, 15s dial timeout, TLS `ServerName` for SNI.
+- Upsert bcrypt password cache on successful IMAP login (`CreateAdmin` / `UpdateAdminPassword`).
+- Offline fallback: bcrypt **or** decrypted stored account password.
+- If IMAP is down and offline auth is unavailable → **503** `mail server temporarily unavailable` (not 401).
+
+Affects Mono and MonoPro editions only (Unified still uses DB bcrypt).
+
+On successful IMAP login, the stored account password is refreshed when it differs from the submitted password (keeps sync workers in sync after mailbox password changes).
+
+#### Server Expunge → Local Delete Sync
+Emails deleted/expunged on the IMAP server stayed visible in the UI: incremental sync only looked for **new** UIDs and never reconciled missing ones. Inbound flag FETCH also ignored misses.
+
+**Fix**:
+- After folder sync (and when a folder is empty), reconcile local UIDs vs `UID SEARCH ALL` when the local count is ahead of the server; purge missing messages + body files.
+- During inbound flag sync, UIDs not returned by FETCH are treated as expunged and deleted locally (non-Gmail).
+- Broadcast SSE `email_deleted`; frontend listens and refreshes the list.
+- Gmail skipped for hard-delete reconcile (label model).
+
+### Changed
+
+#### CI — Self-Hosted Runners
+All CI jobs (`backend`, `frontend`, `e2e-unified`) now use `runs-on: [self-hosted, linux, x64]` instead of `ubuntu-latest`.
+
+`e2e-unified` starts Postgres via `docker run` on port **54329** (no GitHub `services:` containers — unreliable on bare self-hosted runners).
+
+### Fixed (ops / hygiene)
+
+- CORS: main `corsWrapper` now sets `Access-Control-Allow-Credentials: true` when an Origin is allowlisted (aligned with MCP `SetCORSHeaders`).
+- `DATABASE_URL` built from `POSTGRES_*` env vars now URL-encodes user/password via `net/url`.
+- Stop tracking backend build binaries and SQLite WAL/SHM artifacts; expand `.gitignore`.
+
+### Notes
+
+- `Failed to find Server Action "…"` in UI logs is a Next.js deploy/cache mismatch (stale browser or UI container vs API), not the IMAP login bug. Hard refresh or recreate the UI container after pull.
+- Go module toolchain: `1.26.5` (from post-3.1.6 tree; not previously called out).
+- **Follow-up (need EML samples):** some marketing/transactional emails still strip confirmation buttons; some table-based layouts still render incorrectly — to be diagnosed from provided `.eml` files.
+
 ## [3.1.6] — 2026-07-13
 
 ### Fixed
@@ -18,13 +85,17 @@ Code audit revealed several issues in the dedup and cleanup pipeline:
 - **Unnecessary COUNT query** in SQLite `BackfillGmailLabels` removed.
 
 #### PostgreSQL Flag Toggles — Missing `is_dirty_locally`
-`ToggleFlagEmail`, `TogglePinEmail`, `ToggleMuteEmail` omitted `is_dirty_locally = true` in PostgreSQL — flags/pins/mute silently reverted on next sync cycle. Fixed. Affected only Unified and MonoPro editions.
+`ToggleFlagEmail`, `TogglePinEmail`, and `ToggleMuteEmail` omitted `is_dirty_locally = true` in PostgreSQL UPDATE queries. Without the dirty flag, `syncFlags` never pushed the change to IMAP. On the next `syncInboundFlags` cycle, `ApplyServerEmailFlags` fetched the old server state and silently reverted the local change — flags, pins, and mute state appeared to "reset" seconds after being set.
+
+**Fix**: Added `is_dirty_locally = true` to all three PostgreSQL toggle queries. SQLite had it correctly from the start. Affected only Unified and MonoPro editions (PostgreSQL).
 
 #### Phantomcreds — Secrets Removed from Docker Compose
-Hardcoded PostgreSQL connection strings with password interpolation removed from `docker-compose-mp.yml` and `docker-compose-u.yml`. Backend now constructs `DATABASE_URL` from individual env vars when not set directly.
+GitHub scanner `phantomcreds` flagged hardcoded PostgreSQL connection strings with password interpolation in `docker-compose-mp.yml` and `docker-compose-u.yml` (Unified/MonoPro editions).
+
+**Fix**: Replaced inline `DATABASE_URL` construction with `${DATABASE_URL}` passthrough. Backend `main.go` now constructs the connection string from individual env vars (`POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_HOST`) when `DATABASE_URL` is not set. Updated `.env` example files with comments for `POSTGRES_HOST` and `DATABASE_URL` alternative.
 
 #### Telegram Domain — `t.me` → `telegram.dog`
-`t.me` domain blocked by ISPs. All Telegram links in `telegram-tab.tsx` changed to `telegram.dog`.
+`t.me` domain was blocked by ISPs. All Telegram links in `telegram-tab.tsx` changed to `telegram.dog` (mirror that proxies to Telegram). Affects all four editions.
 
 ## [3.1.5] — 2026-07-07
 
@@ -131,13 +202,9 @@ Existing Gmail emails synced before label support had no entries in `email_label
 
 **Fix**: All `UpsertEmailLabels`/`GetGmailLabels` calls now log errors with context (emailID, folder, error).
 
-#### Attachment Upload — Empty UUID in PostgreSQL
-Uploading files for email compose failed silently on PostgreSQL (Unified/MonoPro). The handler set `EmailID: ""` which PostgreSQL rejected with `invalid input syntax for type uuid`. The user saw no error because the frontend `catch` block only logged in development mode.
-
-**Fix**: `EmailID` and `AccountID` now use sentinel UUID `00000000-0000-0000-0000-000000000000` instead of empty string. Frontend `catch` always shows error toast. Backend added `h.CAS == nil` guard (503 instead of nil panic), and all per-file errors logged via `slog.Info`.
-
 ### Changed
 
+- **Dockerfiles**: Russian comments → English. M2-specific compilation comment → generic.
 - **Backend Dockerfile**: removed stale `ARG PUBLIC_KEY=""`, removed `schema.sql` copy (Mono-only).
 - **License ping**: `LICENSE_SERVER_URL` env override removed — uses hardcoded `https://license.rms-ds.com`.
 - **Mono edition**: `InitHK()`, periodic update pings with `latest_version`/`release_notes` restored.

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.8] — 2026-07-27
+
+### Fixed
+- **Attachment Uploads (CAS)**: Fixed an issue where the frontend sent attachment UUIDs instead of CAS hashes during email composition (`useMailCompose`), causing attachments to be silently dropped by the backend's `GetAttachmentByHash`.
+- **Security**: Upgraded `golang.org/x/text` from `v0.38.0` to `v0.39.0` to fix the `GO-2026-5970` infinite loop vulnerability.
+- **RMS Memory**: Added `rules/attachments.md` to document the CAS hash requirement for backend attachments.
+
 ## [3.1.7] — 2026-07-23
 
 ### Security / Deploy (post-audit hardening)

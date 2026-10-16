@@ -85,12 +85,10 @@ func (h *Handler) SSE(w http.ResponseWriter, r *http.Request) {
 	if ticketStr != "" {
 		userID = h.ValidateTicket(ticketStr)
 	} else if cookie, err := r.Cookie("rms_token"); err == nil && cookie.Value != "" {
-		jwtToken, err := middleware.ValidateToken(cookie.Value)
-		if err == nil && jwtToken.Valid {
-			if claims, ok := jwtToken.Claims.(jwt.MapClaims); ok {
-				userID, _ = claims["sub"].(string)
-				jwtClaims = claims
-			}
+		jwtToken, claims, err := middleware.ValidateTokenNotRevoked(r.Context(), cookie.Value)
+		if err == nil && jwtToken != nil && jwtToken.Valid {
+			userID, _ = claims["sub"].(string)
+			jwtClaims = claims
 		}
 	}
 

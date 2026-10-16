@@ -19,7 +19,7 @@ func (s *Storage) GetFolders(ctx context.Context, accountID string) ([]models.Fo
 
 	if accountID == "" {
 		// Return all folders (unified view / empty trash)
-		query = `SELECT f.id, f.account_id, f.name, f.path, f.is_subscribed, f.last_sync_uid, f.created_at, COALESCE(f.unread_count, 0), COALESCE(f.uid_validity, 0)
+		query = `SELECT f.id, f.account_id, f.name, f.path, f.is_subscribed, f.last_sync_uid, f.created_at, COALESCE(f.unread_count, 0), COALESCE(f.uid_validity, 0), COALESCE(f.special_use, '')
 					FROM folders f JOIN accounts a ON f.account_id = a.id
 					WHERE f.is_subscribed = 1
 					GROUP BY f.id
@@ -30,7 +30,7 @@ func (s *Storage) GetFolders(ctx context.Context, accountID string) ([]models.Fo
 												WHEN UPPER(f.name) LIKE '%ALL MAIL%' OR UPPER(f.name) LIKE '%ВСЯ ПОЧТА%' THEN 6
 												WHEN UPPER(f.name) LIKE '%TRASH%' OR UPPER(f.name) LIKE '%SPAM%' OR UPPER(f.name) LIKE '%JUNK%' OR UPPER(f.name) LIKE '%КОРЗИНА%' THEN 8 ELSE 7 END ASC, f.name ASC`
 	} else {
-		query = `SELECT f.id, f.account_id, f.name, f.path, f.is_subscribed, f.last_sync_uid, f.created_at, COALESCE(f.unread_count, 0), COALESCE(f.uid_validity, 0)
+		query = `SELECT f.id, f.account_id, f.name, f.path, f.is_subscribed, f.last_sync_uid, f.created_at, COALESCE(f.unread_count, 0), COALESCE(f.uid_validity, 0), COALESCE(f.special_use, '')
 				FROM folders f
 				JOIN accounts a ON f.account_id = a.id
 				WHERE f.account_id = ? AND f.is_subscribed = 1
@@ -53,7 +53,7 @@ func (s *Storage) GetFolders(ctx context.Context, accountID string) ([]models.Fo
 	for rows.Next() {
 		var f models.Folder
 		var createdAt sql.NullString
-		err := rows.Scan(&f.ID, &f.AccountID, &f.Name, &f.Path, &f.IsSubscribed, &f.LastSyncUID, &createdAt, &f.UnreadCount, &f.UIDValidity)
+		err := rows.Scan(&f.ID, &f.AccountID, &f.Name, &f.Path, &f.IsSubscribed, &f.LastSyncUID, &createdAt, &f.UnreadCount, &f.UIDValidity, &f.SpecialUse)
 		if err != nil {
 			return nil, err
 		}
@@ -64,11 +64,11 @@ func (s *Storage) GetFolders(ctx context.Context, accountID string) ([]models.Fo
 }
 
 func (s *Storage) GetFolderByID(ctx context.Context, id string) (*models.Folder, error) {
-	query := "SELECT id, account_id, name, path, is_subscribed, COALESCE(last_sync_uid,0), created_at, COALESCE(uid_validity,0) FROM folders WHERE id = ?"
+	query := "SELECT id, account_id, name, path, is_subscribed, COALESCE(last_sync_uid,0), created_at, COALESCE(uid_validity,0), COALESCE(special_use,'') FROM folders WHERE id = ?"
 	row := s.db.QueryRowContext(ctx, query, id)
 	var f models.Folder
 	var createdAt sql.NullString
-	err := row.Scan(&f.ID, &f.AccountID, &f.Name, &f.Path, &f.IsSubscribed, &f.LastSyncUID, &createdAt, &f.UIDValidity)
+	err := row.Scan(&f.ID, &f.AccountID, &f.Name, &f.Path, &f.IsSubscribed, &f.LastSyncUID, &createdAt, &f.UIDValidity, &f.SpecialUse)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -80,11 +80,11 @@ func (s *Storage) GetFolderByID(ctx context.Context, id string) (*models.Folder,
 }
 
 func (s *Storage) GetFolderByName(ctx context.Context, accountID, name string) (*models.Folder, error) {
-	query := "SELECT id, account_id, name, path, is_subscribed, last_sync_uid, COALESCE(unread_count,0), created_at, COALESCE(uid_validity,0) FROM folders WHERE account_id = ? AND name_lower = LOWER(?) LIMIT 1"
+	query := "SELECT id, account_id, name, path, is_subscribed, last_sync_uid, COALESCE(unread_count,0), created_at, COALESCE(uid_validity,0), COALESCE(special_use,'') FROM folders WHERE account_id = ? AND name_lower = LOWER(?) LIMIT 1"
 	row := s.db.QueryRowContext(ctx, query, accountID, name)
 	var f models.Folder
 	var createdAt sql.NullString
-	err := row.Scan(&f.ID, &f.AccountID, &f.Name, &f.Path, &f.IsSubscribed, &f.LastSyncUID, &f.UnreadCount, &createdAt, &f.UIDValidity)
+	err := row.Scan(&f.ID, &f.AccountID, &f.Name, &f.Path, &f.IsSubscribed, &f.LastSyncUID, &f.UnreadCount, &createdAt, &f.UIDValidity, &f.SpecialUse)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -141,5 +141,10 @@ func (s *Storage) UpdateFolderLastUID(ctx context.Context, folderID string, last
 
 func (s *Storage) UpdateFolderUIDValidity(ctx context.Context, folderID string, uidValidity uint32) error {
 	_, err := s.db.ExecContext(ctx, "UPDATE folders SET uid_validity = ? WHERE id = ?", uidValidity, folderID)
+	return err
+}
+
+func (s *Storage) UpdateFolderSpecialUse(ctx context.Context, folderID string, specialUse string) error {
+	_, err := s.db.ExecContext(ctx, "UPDATE folders SET special_use = ? WHERE id = ?", specialUse, folderID)
 	return err
 }

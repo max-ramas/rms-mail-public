@@ -22,6 +22,7 @@ import { EmailCommentsSection } from "./email-viewer/email-comments-section";
 import { EmailChatPanel } from "./email-viewer/email-chat-panel";
 import { useEmailPrint } from "./email-viewer/use-email-print";
 import type { EmailViewerProps } from "./email-viewer/types";
+import { isTrashFolder } from "@/lib/is-trash-folder";
 
 export type { EmailViewerProps } from "./email-viewer/types";
 
@@ -126,8 +127,7 @@ export const EmailViewer = React.memo(function EmailViewer({
     if (!fid || !foldersQuery.data) return false;
     const match = foldersQuery.data.find((f) => f.id === fid);
     if (!match) return false;
-    const trashNames = ["Trash", "TRASH", "trash", "Корзина", "Deleted Items"];
-    return trashNames.includes(match.name);
+    return isTrashFolder(match);
   }, [selectedEmail?.folder_id, foldersQuery.data]);
 
   const sortedThreadLength = threadEmails?.length ?? 0;

@@ -24,9 +24,12 @@ export function useSaveDraft() {
       });
       return response.data as { id: string };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["emails"] });
-      qc.invalidateQueries({ queryKey: ["emails-infinite"] });
+    onSuccess: (data) => {
+      // Autosave must not refetch the inbox list — only the open draft.
+      if (data?.id) {
+        qc.invalidateQueries({ queryKey: ["email", data.id] });
+      }
+      qc.invalidateQueries({ queryKey: ["email-folder-counts"] });
     },
   });
 }

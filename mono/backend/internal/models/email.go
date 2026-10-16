@@ -251,6 +251,7 @@ type Folder struct {
 	LastSyncUID  int       `json:"last_sync_uid"`
 	UIDValidity  int64     `json:"uid_validity"`
 	UnreadCount  int       `json:"unread_count"`
+	SpecialUse   string    `json:"special_use,omitempty"` // inbox|sent|drafts|trash|junk|archive|flagged|all
 	CreatedAt    time.Time `json:"created_at"`
 }
 

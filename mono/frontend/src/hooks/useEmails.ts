@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import "@/lib/api-client";
@@ -121,7 +122,7 @@ async function refreshMailInbox(
       };
     });
   }
-  await queryClient.invalidateQueries({ queryKey: ["emails-infinite"] });
+  // refetchQueries alone — do not also invalidate (double network storm).
   await refetchMailLists(queryClient);
 }
 
@@ -139,6 +140,7 @@ export function useMailPeriodicRefresh(enabled = true) {
 
 // ── New Email Event (ticket-based SSE) ─────────────────
 export function useNewEmailEvent(enabled = true) {
+  const t = useTranslations("mail");
   const queryClient = useQueryClient();
   const listRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -232,17 +234,23 @@ export function useNewEmailEvent(enabled = true) {
               ) {
                 if (notificationCount.current === 1) {
                   new Notification(
-                    "New email from: " + lastNotificationSender.current,
+                    t("notifications.new_email_title", {
+                      sender: lastNotificationSender.current,
+                    }),
                     {
-                      body: lastNotificationSubject.current || "New message",
+                      body:
+                        lastNotificationSubject.current ||
+                        t("notifications.new_message"),
                       icon: "/favicon.ico",
                     },
                   );
                 } else if (notificationCount.current > 1) {
                   new Notification(
-                    `You have ${notificationCount.current} new emails`,
+                    t("notifications.multiple_title", {
+                      count: notificationCount.current,
+                    }),
                     {
-                      body: "Click to view your inbox",
+                      body: t("notifications.multiple_body"),
                       icon: "/favicon.ico",
                     },
                   );
@@ -359,10 +367,10 @@ export function useNewEmailEvent(enabled = true) {
         }
       }
     },
-    [queryClient, refreshListNow, scheduleListRefresh],
+    [queryClient, refreshListNow, scheduleListRefresh, t],
   );
 
-  useSSETicket({
+  const { connected } = useSSETicket({
     url: "/api/events",
     events: [
       "new-email",
@@ -378,6 +386,8 @@ export function useNewEmailEvent(enabled = true) {
       refreshListNow({ resetPages: true });
     }, [refreshListNow]),
   });
+
+  return { connected };
 }
 
 // ── Re-exports from modular hooks ───────────────────────────────────

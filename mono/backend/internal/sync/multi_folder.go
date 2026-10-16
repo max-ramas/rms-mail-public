@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"rmsmail/internal/models"
+
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
 )
@@ -57,7 +59,7 @@ func (w *SyncWorker) ListFolders(ctx context.Context, c *imapclient.Client, f *F
 		{Name: "INBOX", Path: "INBOX"},
 	}
 
-	_list, err := c.List("", "*", nil).Collect()
+	_list, err := c.List("", "*", &imap.ListOptions{ReturnSpecialUse: true}).Collect()
 	if err != nil {
 		return folders, err
 	}
@@ -65,6 +67,7 @@ func (w *SyncWorker) ListFolders(ctx context.Context, c *imapclient.Client, f *F
 	for _, item := range _list {
 		slog.Info(fmt.Sprintf("[%s] LIST: folder=%q delim=%q attrs=%v", w.Account.Email, item.Mailbox, string(item.Delim), item.Attrs))
 		if item.Mailbox == "INBOX" {
+			folders[0].Attrs = item.Attrs
 			continue
 		}
 
@@ -234,12 +237,94 @@ func (w *SyncWorker) syncFolder(ctx context.Context, c *imapclient.Client, f *Fe
 			slog.Info(fmt.Sprintf("Failed to create folder %s: %v", folder.Name, err))
 		}
 	}
+	persistFolderSpecialUse(ctx, f.Store, w.Account.ID, folder)
 
 	return w.syncFolderByUID(ctx, c, f, folder, selectData)
 }
 
 func folderUIDValidityMismatch(stored, server uint64) bool {
 	return server > 0 && stored != 0 && stored != server
+}
+
+// specialUseFromAttrs maps IMAP SPECIAL-USE attributes to a stable role string.
+func specialUseFromAttrs(path string, attrs []imap.MailboxAttr) string {
+	for _, attr := range attrs {
+		switch attr {
+		case imap.MailboxAttrTrash:
+			return "trash"
+		case imap.MailboxAttrSent:
+			return "sent"
+		case imap.MailboxAttrDrafts:
+			return "drafts"
+		case imap.MailboxAttrJunk:
+			return "junk"
+		case imap.MailboxAttrArchive:
+			return "archive"
+		case imap.MailboxAttrFlagged:
+			return "flagged"
+		case imap.MailboxAttrAll:
+			return "all"
+		}
+	}
+	if strings.EqualFold(path, "INBOX") {
+		return "inbox"
+	}
+	return ""
+}
+
+func persistFolderSpecialUse(ctx context.Context, store SyncStore, accountID string, folder FolderSync) {
+	role := specialUseFromAttrs(folder.Path, folder.Attrs)
+	if role == "" {
+		return
+	}
+	folderID := folder.FolderID
+	if folderID == "" {
+		created, err := store.CreateFolder(ctx, accountID, folder.Name, folder.Path, true)
+		if err != nil || created == nil {
+			return
+		}
+		folderID = created.ID
+	}
+	_ = store.UpdateFolderSpecialUse(ctx, folderID, role)
+}
+
+// uidValidityResetStore is the subset of SyncStore needed when UIDVALIDITY changes.
+type uidValidityResetStore interface {
+	ClearFolderQueue(ctx context.Context, accountID, folderName string) error
+	GetFolderEmailUIDMap(ctx context.Context, folderID string) (map[uint32]string, error)
+	GetEmail(ctx context.Context, id string, accountID string) (*models.Email, error)
+	DeleteEmailsInFolder(ctx context.Context, folderID string) error
+	UpdateFolderLastUID(ctx context.Context, folderID string, lastUID int) error
+	UpdateFolderUIDValidity(ctx context.Context, folderID string, uidValidity uint32) error
+}
+
+// resetFolderAfterUIDValidityChange clears the sync queue, purges local emails
+// (DB + on-disk bodies), resets last_sync_uid, and stores the new UIDVALIDITY.
+func resetFolderAfterUIDValidityChange(ctx context.Context, store uidValidityResetStore, accountID, folderID, folderPath string, newValidity uint32) error {
+	var firstErr error
+	capture := func(err error) {
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+
+	capture(store.ClearFolderQueue(ctx, accountID, folderPath))
+
+	if local, err := store.GetFolderEmailUIDMap(ctx, folderID); err != nil {
+		capture(err)
+	} else {
+		for _, emailID := range local {
+			email, gErr := store.GetEmail(ctx, emailID, accountID)
+			if gErr == nil && email != nil {
+				PurgeEmailLocalFiles(email)
+			}
+		}
+	}
+
+	capture(store.DeleteEmailsInFolder(ctx, folderID))
+	capture(store.UpdateFolderLastUID(ctx, folderID, 0))
+	capture(store.UpdateFolderUIDValidity(ctx, folderID, newValidity))
+	return firstErr
 }
 
 func (w *SyncWorker) syncFolderByUID(ctx context.Context, c *imapclient.Client, f *Fetcher, folder FolderSync, selectData *imap.SelectData) error {
@@ -268,19 +353,14 @@ func (w *SyncWorker) syncFolderByUID(ctx context.Context, c *imapclient.Client, 
 		}
 
 		if folderID != "" && folderUIDValidityMismatch(storedValidity, serverValidity) {
-			slog.Warn(fmt.Sprintf("[%s] Folder %s: UIDVALIDITY changed %d -> %d, clearing queue and forcing full resync",
+			slog.Warn(fmt.Sprintf("[%s] Folder %s: UIDVALIDITY changed %d -> %d, purging local emails and forcing full resync",
 				w.Account.Email, folderPath, storedValidity, serverValidity))
-			if err := f.Store.ClearFolderQueue(ctx, w.Account.ID, folderPath); err != nil {
-				slog.Warn(fmt.Sprintf("[%s] Failed to clear sync queue for %s: %v", w.Account.Email, folderPath, err))
-			}
-			if err := f.Store.UpdateFolderLastUID(ctx, folderID, 0); err != nil {
-				slog.Warn(fmt.Sprintf("[%s] Failed to reset last_sync_uid for %s: %v", w.Account.Email, folderPath, err))
+			if err := resetFolderAfterUIDValidityChange(ctx, f.Store, w.Account.ID, folderID, folderPath, selectData.UIDValidity); err != nil {
+				slog.Warn(fmt.Sprintf("[%s] UIDVALIDITY reset incomplete for %s: %v", w.Account.Email, folderPath, err))
 			}
 			lastUID = 0
 			forceFullSync = true
-		}
-
-		if folderID != "" {
+		} else if folderID != "" {
 			if err := f.Store.UpdateFolderUIDValidity(ctx, folderID, selectData.UIDValidity); err != nil {
 				slog.Info(fmt.Sprintf("[%s] Failed to save folder UIDValidity for %s: %v", w.Account.Email, folderPath, err))
 			}

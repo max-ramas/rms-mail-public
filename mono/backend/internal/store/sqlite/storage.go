@@ -151,6 +151,7 @@ func (s *Storage) InitSchema(ctx context.Context, schemaSQL string) error {
 	s.addColumnIfMissing(ctx, "folders", "is_inbox", "INTEGER DEFAULT 0")
 	s.addColumnIfMissing(ctx, "folders", "name_lower", "TEXT")
 	s.addColumnIfMissing(ctx, "folders", "uid_validity", "INTEGER DEFAULT 0")
+	s.addColumnIfMissing(ctx, "folders", "special_use", "TEXT DEFAULT ''")
 	s.addColumnIfMissing(ctx, "accounts", "is_manual", "INTEGER DEFAULT 0")
 	s.addColumnIfMissing(ctx, "emails", "cc_address", "TEXT DEFAULT ''")
 	s.addColumnIfMissing(ctx, "emails", "status", "TEXT DEFAULT 'new'")

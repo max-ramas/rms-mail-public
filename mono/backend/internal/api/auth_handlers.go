@@ -451,21 +451,78 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	loginErr := tryIMAPLogin(req.Email, req.Password, imapHost, imapPort, imapEncryption)
 	if loginErr == nil {
-		// IMAP login successful — create account if needed, refresh stored password, issue JWT
+		// IMAP login successful — create account if needed, refresh stored password, issue JWT.
+		// GetAccountCredentialsByEmail decrypts; on key rotation / corrupt ciphertext it errors
+		// even when the row exists — must not CreateAccount (unique email) in that case.
 		acct, err := h.Store.GetAccountCredentialsByEmail(r.Context(), req.Email)
 		if err != nil || acct == nil {
-			newAcc, err := h.Store.CreateAccount(r.Context(),
-				req.Email, "", "custom", imapHost, imapPort, useSSL, imapEncryption,
-				smtpHost, smtpPort, useSSL, smtpEncryption,
-				req.Email, req.Password, "{}", "")
-			if err != nil {
-				WriteInternalError(w, r, err)
-				return
+			var existingID string
+			var existingEmail, existingName, existingProvider string
+			var existingIMAPHost, existingIMAPEnc, existingSMTPHost, existingSMTPEnc string
+			var existingIMAPPort, existingSMTPPort int
+			var existingIMAPSSL, existingSMTPSSL bool
+			var existingUsername, existingAI, existingSig string
+			if accounts, listErr := h.Store.GetAccounts(r.Context()); listErr == nil {
+				for i := range accounts {
+					if strings.EqualFold(accounts[i].Email, req.Email) {
+						a := &accounts[i]
+						existingID = a.ID
+						existingEmail = a.Email
+						existingName = a.Name
+						existingProvider = a.Provider
+						existingIMAPHost = a.IMAPHost
+						existingIMAPPort = int(a.IMAPPort)
+						existingIMAPSSL = a.IMAPSSL
+						existingIMAPEnc = a.IMAPEncryption
+						existingSMTPHost = a.SMTPHost
+						existingSMTPPort = int(a.SMTPPort)
+						existingSMTPSSL = a.SMTPSSL
+						existingSMTPEnc = a.SMTPEncryption
+						existingUsername = a.Username
+						existingAI = a.AIProviderConfig
+						existingSig = a.Signature
+						break
+					}
+				}
 			}
-			acct = newAcc
-
-			if h.SyncManager != nil {
-				h.SyncManager.TriggerRefresh()
+			if existingID == "" {
+				newAcc, createErr := h.Store.CreateAccount(r.Context(),
+					req.Email, "", "custom", imapHost, imapPort, useSSL, imapEncryption,
+					smtpHost, smtpPort, useSSL, smtpEncryption,
+					req.Email, req.Password, "{}", "")
+				if createErr != nil {
+					WriteInternalError(w, r, createErr)
+					return
+				}
+				acct = newAcc
+				if h.SyncManager != nil {
+					h.SyncManager.TriggerRefresh()
+				}
+			} else {
+				// Row exists but credentials unavailable (decrypt failed) — re-encrypt
+				// the IMAP-verified password so sync can resume under the current key.
+				username := existingUsername
+				if username == "" {
+					username = req.Email
+				}
+				if existingAI == "" {
+					existingAI = "{}"
+				}
+				updated, updErr := h.Store.UpdateAccount(r.Context(),
+					existingID, existingEmail, existingName, existingProvider,
+					existingIMAPHost, existingIMAPPort, existingIMAPSSL, existingIMAPEnc,
+					existingSMTPHost, existingSMTPPort, existingSMTPSSL, existingSMTPEnc,
+					username, req.Password, existingAI, existingSig)
+				if updErr != nil {
+					WriteInternalError(w, r, updErr)
+					return
+				}
+				acct = updated
+				slog.Info("login: re-encrypted account password after credential lookup failure",
+					"email", req.Email, "lookup_error", err)
+				if h.SyncManager != nil {
+					h.SyncManager.TriggerRefresh()
+				}
 			}
 		} else if acct.PasswordEncrypted != req.Password {
 			// Keep sync credentials in sync after mailbox password changes
@@ -622,6 +679,19 @@ func (h *Handler) monoOfflineLoginOK(ctx context.Context, email, password string
 	return false
 }
 
+// imapLoginDialKinds returns the ordered dial strategies for the given encryption mode.
+// STARTTLS and SSL never fall back to plaintext (fail-closed).
+func imapLoginDialKinds(encryption string) []string {
+	switch strings.ToLower(encryption) {
+	case "starttls":
+		return []string{"STARTTLS"}
+	case "none":
+		return []string{"plain"}
+	default: // "ssl" / empty — IMAPS only
+		return []string{"TLS", "TLS"} // one retry for flaky servers under IDLE load
+	}
+}
+
 // tryIMAPLogin attempts IMAP authentication with the encryption mode that matches the port.
 // Uses IMAP LOGIN (most compatible) with SASL PLAIN as fallback.
 // Network/transient errors are not treated as wrong passwords.
@@ -635,23 +705,21 @@ func tryIMAPLogin(email, password, host string, port int, encryption string) err
 	}
 
 	var attempts []attempt
-	switch strings.ToLower(encryption) {
-	case "starttls":
-		attempts = []attempt{
-			{func() (*imapclient.Client, error) { return imapclient.DialStartTLS(addr, opts) }, "STARTTLS"},
-			{func() (*imapclient.Client, error) { return imapclient.DialInsecure(addr, opts) }, "plain"},
+	for _, kind := range imapLoginDialKinds(encryption) {
+		switch kind {
+		case "STARTTLS":
+			attempts = append(attempts, attempt{
+				func() (*imapclient.Client, error) { return imapclient.DialStartTLS(addr, opts) }, "STARTTLS",
+			})
+		case "plain":
+			attempts = append(attempts, attempt{
+				func() (*imapclient.Client, error) { return imapclient.DialInsecure(addr, opts) }, "plain",
+			})
+		case "TLS":
+			attempts = append(attempts, attempt{
+				func() (*imapclient.Client, error) { return imapclient.DialTLS(addr, opts) }, "TLS",
+			})
 		}
-	case "none":
-		attempts = []attempt{
-			{func() (*imapclient.Client, error) { return imapclient.DialInsecure(addr, opts) }, "plain"},
-			{func() (*imapclient.Client, error) { return imapclient.DialStartTLS(addr, opts) }, "STARTTLS"},
-		}
-	default: // "ssl" / empty — IMAPS only (do not probe STARTTLS/plain on :993)
-		attempts = []attempt{
-			{func() (*imapclient.Client, error) { return imapclient.DialTLS(addr, opts) }, "TLS"},
-		}
-		// One retry for flaky mail servers under IDLE load
-		attempts = append(attempts, attempts[0])
 	}
 
 	var lastErr error
@@ -878,19 +946,14 @@ func testIMAPLogin(host string, port int, username, password string, useSSL bool
 	if useSSL {
 		client, dialErr = imapclient.DialTLS(addr, opts)
 	} else {
-		client, dialErr = imapclient.DialInsecure(addr, opts)
+		// Explicit non-SSL probe: prefer STARTTLS, then plain (never downgrade SSL→plain).
+		client, dialErr = imapclient.DialStartTLS(addr, opts)
+		if dialErr != nil {
+			client, dialErr = imapclient.DialInsecure(addr, opts)
+		}
 	}
 	if dialErr != nil {
-		// Try STARTTLS on insecure dial
-		if !useSSL {
-			client2, err2 := imapclient.DialStartTLS(addr, opts)
-			if err2 != nil {
-				return false
-			}
-			client = client2
-		} else {
-			return false
-		}
+		return false
 	}
 	defer client.Close()
 

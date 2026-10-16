@@ -11,7 +11,8 @@ function isPublicPath(pathname: string): boolean {
 export function GlobalMailSSE() {
   const pathname = usePathname();
   const enabled = !isPublicPath(pathname);
-  useNewEmailEvent(enabled);
-  useMailPeriodicRefresh(enabled);
+  const { connected } = useNewEmailEvent(enabled);
+  // Poll only when SSE is down — avoid double refresh storms.
+  useMailPeriodicRefresh(enabled && !connected);
   return null;
 }

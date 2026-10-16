@@ -121,6 +121,7 @@ type FolderStore interface {
 	DeleteFolder(ctx context.Context, folderID string) error
 	UpdateFolderLastUID(ctx context.Context, folderID string, lastUID int) error
 	UpdateFolderUIDValidity(ctx context.Context, folderID string, uidValidity uint32) error
+	UpdateFolderSpecialUse(ctx context.Context, folderID string, specialUse string) error
 }
 
 // EntityStore — CRUD for templates, labels, rules, contacts, identities,
@@ -190,6 +191,7 @@ type AdminStore interface {
 	GetMCPKey(ctx context.Context, id string) (*models.MCPKey, error)
 	GetMCPKeyFull(ctx context.Context, id string) (string, error)
 	GetMCPKeyByAPIKey(ctx context.Context, apiKey string) (*models.MCPKey, error)
+	TouchMCPKeyLastUsed(ctx context.Context, id string) error
 	CreateMCPKey(ctx context.Context, name, accountID, keyHash, keyPrefix, rawKey string) (*models.MCPKey, error)
 	DeleteMCPKey(ctx context.Context, id string) error
 	ToggleMCPKey(ctx context.Context, id string) (*models.MCPKey, error)

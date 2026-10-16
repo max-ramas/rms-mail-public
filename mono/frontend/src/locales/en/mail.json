@@ -7,6 +7,12 @@
       "placeholder": "Search through emails...",
       "no_results": "Nothing found"
     },
+    "notifications": {
+      "new_email_title": "New email from: {sender}",
+      "new_message": "New message",
+      "multiple_title": "You have {count} new emails",
+      "multiple_body": "Click to view your inbox"
+    },
     "folders": {
       "title": "Folders",
       "sent": "Sent",
@@ -39,6 +45,7 @@
       "unpin": "Unpin",
       "flag": "Flag",
       "unflag": "Remove flag",
+      "more": "More actions",
       "mute": "Ignore",
       "mute_tooltip": "Ignore — exclude from unread count",
       "from": "From",

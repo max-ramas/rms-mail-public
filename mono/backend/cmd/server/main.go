@@ -34,7 +34,7 @@ import (
 )
 
 // AppVersion holds the version string injected via ldflags at build time.
-var AppVersion string = "3.1.9"
+var AppVersion string = "3.1.10"
 
 type schemaStore interface {
 	InitSchema(ctx context.Context, schema string) error
@@ -265,7 +265,7 @@ func main() {
 	// Initialize License Manager
 	appVersion := AppVersion
 	if appVersion == "" {
-		appVersion = "3.1.9" // Fallback
+		appVersion = "3.1.10" // Fallback
 	}
 	productID := edition.Current.ProductID()
 	license.InitHK()
@@ -589,7 +589,7 @@ func main() {
 		})
 	})
 
-	mux.HandleFunc("/metrics", api.MetricsHandler)
+	mux.Handle("/metrics", middleware.AdminOnlyMiddleware(http.HandlerFunc(api.MetricsHandler)))
 	mux.HandleFunc("/api/stats", apiHandler.GetStats)
 
 	// Login rate limiter: 5 requests per 60s per IP (brute-force protection)
@@ -602,12 +602,7 @@ func main() {
 		loginHandler.ServeHTTP(w, r)
 	})
 
-	var aiRateLimit, searchRateLimit func(http.Handler) http.Handler
-	if aiRateLimit == nil {
-		noopMw := func(next http.Handler) http.Handler { return next }
-		aiRateLimit = noopMw
-		searchRateLimit = noopMw
-	}
+	var aiRateLimit, searchRateLimit, mcpRateLimit, globalRateLimit func(http.Handler) http.Handler
 	mux.HandleFunc("/api/auth/status", apiHandler.HandleAuthStatus)
 	mux.HandleFunc("/api/auth/edition", apiHandler.EditionInfo)
 	mux.HandleFunc("/api/auth/verify", apiHandler.HandleVerifyToken)
@@ -635,8 +630,8 @@ func main() {
 		}
 	})
 	mux.HandleFunc("/api/events", apiHandler.SSE)
-	mux.HandleFunc("/mcp/sse", apiHandler.MCPSSE)
-	mux.HandleFunc("/mcp/messages", apiHandler.MCPMessages)
+	mux.Handle("/mcp/sse", mcpRateLimit(http.HandlerFunc(apiHandler.MCPSSE)))
+	mux.Handle("/mcp/messages", mcpRateLimit(http.HandlerFunc(apiHandler.MCPMessages)))
 	mux.HandleFunc("/api/emails/restore/", apiHandler.RestoreFromTrash)
 	mux.HandleFunc("/api/emails/", apiHandler.HandleEmail)
 	mux.HandleFunc("/api/emails/bulk", apiHandler.BulkAction)
@@ -827,6 +822,16 @@ func main() {
 	handler = middleware.AIDisableMiddleware(aiDisabled, handler)
 	handler = middleware.JWTAuthMiddleware(handler)
 	handler = middleware.SentryMiddleware(handler)
+	// Global API rate limit (60/min/IP); skip health probes.
+	innerHandler := handler
+	rateLimited := globalRateLimit(innerHandler)
+	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/health" || r.URL.Path == "/health" {
+			innerHandler.ServeHTTP(w, r)
+			return
+		}
+		rateLimited.ServeHTTP(w, r)
+	})
 
 	panicRecovery := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

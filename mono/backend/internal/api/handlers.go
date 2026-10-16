@@ -216,7 +216,9 @@ func InitializeSecurity() {
 
 func generateAPIKey() (raw string, hash string, prefix string) {
 	b := make([]byte, 24)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("generateAPIKey: crypto/rand failed: " + err.Error())
+	}
 	raw = "rmsm_" + hex.EncodeToString(b)
 	h := sha256.Sum256([]byte(raw))
 	hash = hex.EncodeToString(h[:])

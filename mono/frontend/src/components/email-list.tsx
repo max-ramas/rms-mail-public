@@ -197,7 +197,7 @@ export const EmailList = React.memo(function EmailList({
   });
 
   return (
-    <div className="w-96 max-lg:w-full h-full min-h-0 shrink-0 flex-col flex border-e border-border-muted/50 bg-list-bg">
+    <div className="w-96 max-lg:w-full h-full min-h-0 shrink-0 flex-col flex border-e border-border bg-card">
       <EmailFilters
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}

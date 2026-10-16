@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { createPortal } from "react-dom";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+
+import { cn } from "@/lib/utils";
 
 export interface DropdownMenuProps {
   trigger?: React.ReactNode;
@@ -9,55 +11,30 @@ export interface DropdownMenuProps {
 }
 
 export function DropdownMenu({ trigger, children }: DropdownMenuProps) {
-  const [open, setOpen] = React.useState(false);
-  const triggerRef = React.useRef<HTMLDivElement>(null);
-  const [pos, setPos] = React.useState({ top: 0, left: 0 });
-
-  React.useEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPos({ top: rect.bottom + 4, left: rect.right - 192 }); // 192px = w-48
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node)
-      ) {
-        // Also check if click is inside the portal
-        const portal = document.getElementById("dropdown-portal");
-        if (portal && !portal.contains(e.target as Node)) {
-          setOpen(false);
-        }
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
-
-  const dropdown = open && (
-    <div
-      id="dropdown-portal"
-      className="fixed w-48 bg-card border border-border rounded-md shadow-lg z-[9999]"
-      style={{ top: pos.top, left: pos.left }}
-    >
-      {children}
-    </div>
-  );
-
   return (
-    <>
-      <div ref={triggerRef} onClick={() => setOpen(!open)}>
+    <DropdownMenuPrimitive.Root>
+      <DropdownMenuPrimitive.Trigger asChild>
         {trigger}
-      </div>
-      {typeof document !== "undefined" && createPortal(dropdown, document.body)}
-    </>
+      </DropdownMenuPrimitive.Trigger>
+      <DropdownMenuPrimitive.Portal>
+        <DropdownMenuPrimitive.Content
+          align="end"
+          sideOffset={4}
+          className={cn(
+            "z-[9999] min-w-48 overflow-hidden rounded-md border border-border bg-card p-1 text-foreground shadow-lg",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          {children}
+        </DropdownMenuPrimitive.Content>
+      </DropdownMenuPrimitive.Portal>
+    </DropdownMenuPrimitive.Root>
   );
 }
 
-export interface DropdownMenuItemProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DropdownMenuItemProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Item
+> {
   children?: React.ReactNode;
   onClick?: () => void;
   destructive?: boolean;
@@ -67,26 +44,42 @@ export function DropdownMenuItem({
   children,
   onClick,
   className,
+  destructive,
   ...props
 }: DropdownMenuItemProps) {
   return (
-    <div
-      className={`px-4 py-2 text-sm text-foreground hover:bg-muted cursor-pointer ${className || ""}`}
-      onClick={onClick}
+    <DropdownMenuPrimitive.Item
+      className={cn(
+        "relative flex cursor-pointer select-none items-center rounded-sm px-4 py-2 text-sm outline-none transition-colors focus:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        destructive && "text-destructive focus:bg-destructive/10",
+        className,
+      )}
+      onSelect={(event) => {
+        event.preventDefault();
+        onClick?.();
+      }}
       {...props}
     >
       {children}
-    </div>
+    </DropdownMenuPrimitive.Item>
   );
 }
 
-export type DropdownMenuSeparatorProps = React.HTMLAttributes<HTMLDivElement>;
+export type DropdownMenuSeparatorProps = React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Separator
+>;
 
 export function DropdownMenuSeparator({
   className,
   ...props
 }: DropdownMenuSeparatorProps) {
   return (
-    <div className={`h-px bg-border my-1 ${className || ""}`} {...props} />
+    <DropdownMenuPrimitive.Separator
+      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      {...props}
+    />
   );
 }
+
+export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+export const DropdownMenuContent = DropdownMenuPrimitive.Content;

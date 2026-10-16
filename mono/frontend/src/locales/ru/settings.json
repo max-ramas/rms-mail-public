@@ -155,6 +155,7 @@
     "mcp_key_default": "MCP Ключ",
     "mcp_enable": "Включить",
     "mcp_disable": "Отключить",
+    "mcp_last_used": "Использовался {date}",
     "mcp_key": "Ключ",
     "mcp_no_key": "Без ключа",
     "tab_telegram": "Телеграм",

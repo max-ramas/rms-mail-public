@@ -148,6 +148,35 @@ func (s *Storage) DeleteMCPKey(ctx context.Context, id string) error {
 	return err
 }
 
+func (s *Storage) TouchMCPKeyLastUsed(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, "UPDATE mcp_keys SET last_used_at = ? WHERE id = ?", formatTime(time.Now()), id)
+	return err
+}
+
+func (s *Storage) ToggleMCPKey(ctx context.Context, id string) (*models.MCPKey, error) {
+	_, err := s.db.ExecContext(ctx, "UPDATE mcp_keys SET is_active = NOT is_active WHERE id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+	var k models.MCPKey
+	var lastUsedAt, createdAt sql.NullString
+	err = s.db.QueryRowContext(ctx,
+		"SELECT id, name, COALESCE(account_id, ''), key_prefix, is_active, COALESCE(last_used_at, ''), created_at FROM mcp_keys WHERE id = ?", id).
+		Scan(&k.ID, &k.Name, &k.AccountID, &k.KeyPrefix, &k.IsActive, &lastUsedAt, &createdAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if lastUsedAt.Valid && lastUsedAt.String != "" {
+		t := parseTime(lastUsedAt)
+		k.LastUsedAt = &t
+	}
+	k.CreatedAt = parseTime(createdAt)
+	return &k, nil
+}
+
 func (s *Storage) GetMCPKey(ctx context.Context, id string) (*models.MCPKey, error) {
 	var k models.MCPKey
 	err := s.db.QueryRowContext(ctx, "SELECT id, COALESCE(account_id, ''), name, COALESCE(is_active, 1) FROM mcp_keys WHERE id = ?", id).Scan(&k.ID, &k.AccountID, &k.Name, &k.IsActive)

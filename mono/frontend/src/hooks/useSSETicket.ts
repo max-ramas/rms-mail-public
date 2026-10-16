@@ -23,7 +23,7 @@ export function useSSETicket({
   onEvent,
   enabled = true,
   onOpen,
-}: UseSSETicketOptions) {
+}: UseSSETicketOptions): { connected: boolean } {
   const esRef = useRef<EventSource | null>(null);
   const mountedRef = useRef(true);
   const onEventRef = useRef(onEvent);
@@ -34,11 +34,14 @@ export function useSSETicket({
     onOpenRef.current = onOpen;
   });
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
+  const [connected, setConnected] = useState(false);
   const retryCountRef = useRef(0);
   const eventsKey = events.join(",");
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     mountedRef.current = true;
     let reconnectTimeout: ReturnType<typeof setTimeout>;
@@ -52,6 +55,7 @@ export function useSSETicket({
         esRef.current.close();
         esRef.current = null;
       }
+      setConnected(false);
 
       const ticket = await ticketManager.getTicket();
       if (!mountedRef.current) return;
@@ -65,6 +69,7 @@ export function useSSETicket({
 
       es.onopen = () => {
         retryCountRef.current = 0;
+        setConnected(true);
         onOpenRef.current?.();
       };
 
@@ -76,6 +81,7 @@ export function useSSETicket({
       }
 
       es.onerror = () => {
+        setConnected(false);
         es.close();
         esRef.current = null;
         if (!mountedRef.current) return;
@@ -104,6 +110,7 @@ export function useSSETicket({
 
     return () => {
       mountedRef.current = false;
+      setConnected(false);
       clearTimeout(reconnectTimeout);
       cleanupFns.forEach((fn) => fn());
       if (esRef.current) {
@@ -113,4 +120,6 @@ export function useSSETicket({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, eventsKey, enabled, reconnectTrigger]);
+
+  return { connected: enabled && connected };
 }

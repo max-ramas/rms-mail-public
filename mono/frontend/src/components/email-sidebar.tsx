@@ -203,7 +203,7 @@ const EmailSidebarComponent = ({
     <>
       {/* Sidebar */}
       <aside
-        className={`w-full lg:w-64 border-e border-border-muted/50 flex flex-col ${mobileView !== "sidebar" ? "hidden lg:flex" : "flex fixed lg:relative inset-0 z-40 bg-app-bg"}`}
+        className={`w-full lg:w-64 border-e border-border flex flex-col bg-card ${mobileView !== "sidebar" ? "hidden lg:flex" : "flex fixed lg:relative inset-0 z-40"}`}
       >
         <div className="h-16 px-4 flex items-center gap-2 font-bold text-xl border-b border-border-muted/50 shrink-0">
           <Mail className="w-6 h-6 text-primary" />

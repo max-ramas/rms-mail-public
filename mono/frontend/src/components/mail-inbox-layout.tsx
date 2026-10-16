@@ -141,7 +141,7 @@ export function MailInboxLayout({
 }: MailInboxLayoutProps) {
   return (
     <div
-      className="flex h-screen bg-app-bg text-text-main font-sans"
+      className="flex h-screen bg-background text-text-main font-sans"
       suppressHydrationWarning
     >
       <input
@@ -211,7 +211,7 @@ export function MailInboxLayout({
         </div>
 
         <div
-          className={`flex-1 flex flex-col min-w-0 bg-app-bg ${mobileView !== "viewer" ? "hidden lg:flex" : "flex"}`}
+          className={`flex-1 flex flex-col min-w-0 bg-background ${mobileView !== "viewer" ? "hidden lg:flex" : "flex"}`}
         >
           {isReplying && !replyTo ? (
             <ComposePanel

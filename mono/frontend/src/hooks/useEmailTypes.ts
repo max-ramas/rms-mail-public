@@ -141,6 +141,7 @@ export interface Folder {
   is_subscribed: boolean;
   last_sync_uid: number;
   unread_count?: number;
+  special_use?: string;
 }
 
 export interface AIMessage {

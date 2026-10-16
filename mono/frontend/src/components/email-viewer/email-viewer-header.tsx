@@ -194,7 +194,7 @@ export function EmailViewerHeader({
       </div>
 
       {detailsOpen && (
-        <div className="p-4 rounded-xl bg-zinc-900/30 border border-border-muted/40 backdrop-blur-md space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="p-4 rounded-xl bg-card/80 border border-border backdrop-blur-md space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 min-w-0">

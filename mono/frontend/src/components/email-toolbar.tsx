@@ -89,7 +89,7 @@ export function EmailToolbar({
   const tCommands = useTranslations("commands");
 
   return (
-    <div className="relative z-20 flex-none flex w-full border-b border-border-muted/50 bg-card-bg/60 backdrop-blur-md shrink-0">
+    <div className="relative z-20 flex-none flex w-full border-b border-border bg-card/60 backdrop-blur-md shrink-0">
       <div className="flex-1 flex items-center justify-between gap-x-2 px-4 h-16 overflow-x-auto select-none no-scrollbar">
         {/* Left side: Compose and standard replies */}
         <div className="flex items-center gap-2">
@@ -254,6 +254,11 @@ export function EmailToolbar({
                       ? tCommands("mail_mark_unread")
                       : tCommands("mail_mark_read")
                   }
+                  aria-label={
+                    selectedEmail.is_read
+                      ? tCommands("mail_mark_unread")
+                      : tCommands("mail_mark_read")
+                  }
                 >
                   {selectedEmail.is_read ? (
                     <Mail className="w-4 h-4" />
@@ -268,6 +273,7 @@ export function EmailToolbar({
                 onClick={onArchive}
                 className="h-7 w-7 p-0 text-text-muted hover:text-text-main transition-colors"
                 title={t("actions.archive")}
+                aria-label={t("actions.archive")}
               >
                 <Archive className="w-4 h-4" />
               </Button>
@@ -277,6 +283,7 @@ export function EmailToolbar({
                 onClick={onDelete}
                 className="h-7 w-7 p-0 text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 title={t("actions.delete")}
+                aria-label={t("actions.delete")}
                 type="button"
               >
                 <Trash className="w-4 h-4" />
@@ -301,6 +308,8 @@ export function EmailToolbar({
                   size="sm"
                   variant="secondary"
                   className="h-8 w-8 p-0 cursor-pointer bg-muted/30 border border-border-muted/30 hover:bg-muted/50 rounded-lg transition-colors flex items-center justify-center"
+                  aria-label={t("actions.more")}
+                  title={t("actions.more")}
                 >
                   <MoreHorizontal className="w-4 h-4 text-text-muted" />
                 </Button>
@@ -347,7 +356,7 @@ export function EmailToolbar({
       </div>
 
       {onBackClick && (
-        <div className="lg:hidden flex-none flex items-center justify-center px-2 border-l border-border-muted/50 bg-card-bg/90 shadow-[-4px_0_12px_rgba(0,0,0,0.05)] z-30">
+        <div className="lg:hidden flex-none flex items-center justify-center px-2 border-l border-border bg-card/90 shadow-[-4px_0_12px_rgba(0,0,0,0.05)] z-30">
           <button
             className="p-2 text-text-muted hover:text-text-main"
             onClick={onBackClick}

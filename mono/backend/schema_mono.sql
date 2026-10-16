@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS folders (
     uid_validity INTEGER DEFAULT 0,
     unread_count INTEGER DEFAULT 0,
     is_inbox INTEGER DEFAULT 0,
+    special_use TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(account_id, path)
 );

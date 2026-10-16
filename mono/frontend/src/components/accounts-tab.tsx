@@ -120,6 +120,7 @@ export function AccountsTab({
         imap_host: string;
         imap_port: number;
         imap_ssl: boolean;
+        imap_encryption: string;
         username: string;
         password?: string;
         account_id?: string;
@@ -128,6 +129,7 @@ export function AccountsTab({
         imap_host: form.imapHost,
         imap_port: form.imapPort,
         imap_ssl: form.imapEnc !== "none",
+        imap_encryption: form.imapEnc,
         username: form.email,
         password: form.password,
       };

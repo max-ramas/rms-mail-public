@@ -49,7 +49,7 @@ export function EmailLabelsDropdown({
         <Tags className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute top-9.5 right-0 z-50 min-w-45 rounded-xl border border-zinc-800 bg-zinc-950/90 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute top-9.5 right-0 z-50 min-w-45 rounded-xl border border-border bg-card/95 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
           {labelsData.map((l) => {
             const isActive = selectedLabelIds.has(l.id);
             return (
@@ -61,8 +61,8 @@ export function EmailLabelsDropdown({
                 }}
                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-medium transition-colors cursor-pointer ${
                   isActive
-                    ? "bg-zinc-800 text-text-main"
-                    : "text-text-muted hover:bg-zinc-900 hover:text-text-main"
+                    ? "bg-muted text-text-main"
+                    : "text-text-muted hover:bg-muted/80 hover:text-text-main"
                 }`}
               >
                 <span

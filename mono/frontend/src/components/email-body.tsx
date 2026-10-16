@@ -91,6 +91,11 @@ export const EmailBody = forwardRef<
     const iframe = iframeRef.current;
     const doc = iframe?.contentDocument;
     if (doc) {
+      doc.documentElement.style.backgroundColor = "#ffffff";
+      if (doc.body) {
+        doc.body.style.backgroundColor = "#ffffff";
+        doc.body.style.color = "#18181b";
+      }
       const target = doc.getElementById("rms-mail-wrapper") || doc.body;
       if (target) {
         observerRef.current?.disconnect();
@@ -213,7 +218,7 @@ export const EmailBody = forwardRef<
       return (
         <>
           <div
-            className="font-sans text-sm leading-relaxed whitespace-pre-wrap wrap-break-word p-4 rounded-xl border border-border/50 bg-card-bg text-foreground email-simple-content"
+            className="font-sans text-sm leading-relaxed whitespace-pre-wrap wrap-break-word p-4 rounded-xl border border-border/50 bg-white text-zinc-900 dark:bg-white dark:text-zinc-900 email-simple-content"
             dangerouslySetInnerHTML={{ __html: processedHtml || html }}
             onClick={(e) => {
               const target = e.target as HTMLElement;
@@ -272,7 +277,7 @@ export const EmailBody = forwardRef<
 
     return (
       <>
-        <div className="w-full overflow-hidden rounded-xl border border-border/50 bg-white relative">
+        <div className="w-full overflow-hidden rounded-xl border border-border/50 bg-white dark:bg-white relative">
           <iframe
             key={emailId || "no-email"}
             ref={iframeRef}
@@ -309,7 +314,7 @@ export const EmailBody = forwardRef<
   }
 
   return (
-    <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap wrap-break-word p-4 rounded-xl border border-border/50 bg-card-bg text-foreground">
+    <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap wrap-break-word p-4 rounded-xl border border-border/50 bg-white text-zinc-900 dark:bg-white dark:text-zinc-900">
       {body || snippet}
     </div>
   );

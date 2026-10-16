@@ -372,12 +372,13 @@ func (h *Handler) createAccount(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) testAccountConnection(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ImapHost  string `json:"imap_host"`
-		ImapPort  int    `json:"imap_port"`
-		ImapSSL   bool   `json:"imap_ssl"`
-		Username  string `json:"username"`
-		Password  string `json:"password"`
-		AccountID string `json:"account_id"`
+		ImapHost       string `json:"imap_host"`
+		ImapPort       int    `json:"imap_port"`
+		ImapSSL        bool   `json:"imap_ssl"`
+		ImapEncryption string `json:"imap_encryption"`
+		Username       string `json:"username"`
+		Password       string `json:"password"`
+		AccountID      string `json:"account_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		WriteJSONError(w, http.StatusBadRequest, ClientSafeMessage(err, "bad request"))
@@ -390,6 +391,9 @@ func (h *Handler) testAccountConnection(w http.ResponseWriter, r *http.Request) 
 		acc, err := h.Store.GetAccountCredentials(r.Context(), req.AccountID)
 		if err == nil && acc != nil {
 			password = acc.PasswordEncrypted
+			if req.ImapEncryption == "" && acc.IMAPEncryption != "" {
+				req.ImapEncryption = acc.IMAPEncryption
+			}
 		}
 	}
 	if password == "" {
@@ -397,20 +401,31 @@ func (h *Handler) testAccountConnection(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	encryption := strings.ToLower(strings.TrimSpace(req.ImapEncryption))
+	if encryption == "" {
+		if req.ImapSSL {
+			encryption = "ssl"
+		} else {
+			encryption = "none"
+		}
+	}
+
 	addr := fmt.Sprintf("%s:%d", req.ImapHost, req.ImapPort)
-
-	// Simple connect + login test
-	var client *imapclient.Client
-	var dialErr error
-
 	opts := &imapclient.Options{
 		Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-		TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
+		TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true", ServerName: req.ImapHost},
 	}
-	if req.ImapSSL {
-		client, dialErr = imapclient.DialTLS(addr, opts)
-	} else {
+
+	// Fail-closed: STARTTLS/SSL never fall back to plaintext.
+	var client *imapclient.Client
+	var dialErr error
+	switch encryption {
+	case "starttls":
+		client, dialErr = imapclient.DialStartTLS(addr, opts)
+	case "none":
 		client, dialErr = imapclient.DialInsecure(addr, opts)
+	default: // ssl / tls / empty
+		client, dialErr = imapclient.DialTLS(addr, opts)
 	}
 	if dialErr != nil {
 		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "Connection failed: " + dialErr.Error()})

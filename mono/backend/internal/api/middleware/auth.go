@@ -191,8 +191,7 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Query-string JWTs leak into logs, history, and referer headers.
-		// Reject everywhere except legacy MCP SSE paths (cookie/header preferred).
-		if fromQuery && !strings.HasPrefix(r.URL.Path, "/mcp/") {
+		if fromQuery {
 			writeJSONAuthError(w, http.StatusBadRequest, "JWT ?token= query parameter is not supported; use Authorization header or cookie")
 			return
 		}
@@ -255,6 +254,20 @@ func ValidateToken(tokenStr string) (*jwt.Token, error) {
 		}
 		return jwtSecret, nil
 	})
+}
+
+// ValidateTokenNotRevoked parses the JWT and rejects blacklisted JTIs.
+// Returns the token, claims map, and an error suitable for HTTP responses.
+func ValidateTokenNotRevoked(ctx context.Context, tokenStr string) (*jwt.Token, jwt.MapClaims, error) {
+	token, err := ValidateToken(tokenStr)
+	if err != nil || token == nil || !token.Valid {
+		return nil, nil, fmt.Errorf("invalid or expired token")
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid token claims")
+	}
+	return token, claims, nil
 }
 
 // GetJWTSecret returns the current JWT secret (for testing/external use).

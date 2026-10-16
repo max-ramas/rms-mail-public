@@ -99,14 +99,17 @@ var rateLimitScript = redis.NewScript(`
 `)
 
 func NewRedisRateLimiter(rdb *redis.Client, prefix string, limit, windowSec int) func(http.Handler) http.Handler {
+	fallback := NewInMemoryRateLimiter(limit)
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redisMW := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := extractClientIP(r)
 
 			key := prefix + ip
 			res, err := rateLimitScript.Run(r.Context(), rdb, []string{key}, windowSec).Int64()
 			if err != nil {
-				WriteInternalError(w, r, err)
+				// Degrade to in-memory instead of failing closed with 500.
+				slog.Warn("redis rate limit unavailable, using in-memory fallback", "prefix", prefix, "error", err)
+				fallback.Middleware(next).ServeHTTP(w, r)
 				return
 			}
 
@@ -118,6 +121,7 @@ func NewRedisRateLimiter(rdb *redis.Client, prefix string, limit, windowSec int)
 
 			next.ServeHTTP(w, r)
 		})
+		return redisMW
 	}
 }
 

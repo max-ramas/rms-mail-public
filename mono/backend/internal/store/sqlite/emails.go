@@ -1863,27 +1863,6 @@ func (s *Storage) FailIMAPMove(ctx context.Context, moveID string, errMsg string
 // AI Log (stubs for Mono)
 // ============================================================================
 
-func (s *Storage) ToggleMCPKey(ctx context.Context, id string) (*models.MCPKey, error) {
-	_, err := s.db.ExecContext(ctx, "UPDATE mcp_keys SET is_active = NOT is_active WHERE id = ?", id)
-	if err != nil {
-		return nil, err
-	}
-	var k models.MCPKey
-	var lastUsedAt, createdAt sql.NullString
-	err = s.db.QueryRowContext(ctx,
-		"SELECT id, name, COALESCE(account_id, ''), key_prefix, is_active, COALESCE(last_used_at, ''), created_at FROM mcp_keys WHERE id = ?", id).
-		Scan(&k.ID, &k.Name, &k.AccountID, &k.KeyPrefix, &k.IsActive, &lastUsedAt, &createdAt)
-	if err != nil {
-		return nil, err
-	}
-	if lastUsedAt.Valid && lastUsedAt.String != "" {
-		t := parseTime(lastUsedAt)
-		k.LastUsedAt = &t
-	}
-	k.CreatedAt = parseTime(createdAt)
-	return &k, nil
-}
-
 func (s *Storage) GetAdminByEmail(ctx context.Context, email string) (string, string, error) {
 	var id, passwordHash string
 	err := s.db.QueryRowContext(ctx, "SELECT id, password_hash FROM admins WHERE email = ?", email).Scan(&id, &passwordHash)

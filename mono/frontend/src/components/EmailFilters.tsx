@@ -249,7 +249,7 @@ const EmailFilters = React.memo(function EmailFilters({
                 </button>
 
                 {labelsDropdownOpen && (
-                  <div className="absolute top-[30px] start-0 z-50 min-w-[160px] rounded-xl border border-zinc-800 bg-zinc-950/90 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="absolute top-[30px] start-0 z-50 min-w-[160px] rounded-xl border border-border bg-card/95 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
                     {/* All Labels Option */}
                     <button
                       onClick={() => {
@@ -258,15 +258,15 @@ const EmailFilters = React.memo(function EmailFilters({
                       }}
                       className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-medium transition-colors cursor-pointer ${
                         filterLabel === ""
-                          ? "bg-zinc-800 text-text-main"
-                          : "text-text-muted hover:bg-zinc-900 hover:text-text-main"
+                          ? "bg-muted text-text-main"
+                          : "text-text-muted hover:bg-muted/80 hover:text-text-main"
                       }`}
                     >
-                      <span className="w-2.5 h-2.5 rounded-full border border-dashed border-zinc-600 inline-block shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full border border-dashed border-border inline-block shrink-0" />
                       <span>{t("all_labels")}</span>
                     </button>
 
-                    <div className="h-px bg-zinc-800 my-1" />
+                    <div className="h-px bg-border my-1" />
 
                     {/* Individual Label Options */}
                     <div className="max-h-[200px] overflow-y-auto space-y-0.5">
@@ -279,8 +279,8 @@ const EmailFilters = React.memo(function EmailFilters({
                           }}
                           className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-medium transition-colors cursor-pointer ${
                             filterLabel === l.id
-                              ? "bg-zinc-800 text-text-main"
-                              : "text-text-muted hover:bg-zinc-900 hover:text-text-main"
+                              ? "bg-muted text-text-main"
+                              : "text-text-muted hover:bg-muted/80 hover:text-text-main"
                           }`}
                         >
                           <span
@@ -359,7 +359,7 @@ const EmailFilters = React.memo(function EmailFilters({
                 </button>
 
                 {aiDropdownOpen && (
-                  <div className="absolute top-[30px] start-0 z-50 min-w-[160px] rounded-xl border border-zinc-800 bg-zinc-950/90 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="absolute top-[30px] start-0 z-50 min-w-[160px] rounded-xl border border-border bg-card/95 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
                     {/* All Categories Option */}
                     <button
                       onClick={() => {
@@ -368,15 +368,15 @@ const EmailFilters = React.memo(function EmailFilters({
                       }}
                       className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-medium transition-colors cursor-pointer ${
                         filterTag === ""
-                          ? "bg-zinc-800 text-text-main"
-                          : "text-text-muted hover:bg-zinc-900 hover:text-text-main"
+                          ? "bg-muted text-text-main"
+                          : "text-text-muted hover:bg-muted/80 hover:text-text-main"
                       }`}
                     >
-                      <span className="w-2.5 h-2.5 rounded-full border border-dashed border-zinc-600 inline-block shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full border border-dashed border-border inline-block shrink-0" />
                       <span>{t("all_categories")}</span>
                     </button>
 
-                    <div className="h-px bg-zinc-800 my-1" />
+                    <div className="h-px bg-border my-1" />
 
                     {/* Individual AI Category Options */}
                     <div className="max-h-[200px] overflow-y-auto space-y-0.5">
@@ -389,8 +389,8 @@ const EmailFilters = React.memo(function EmailFilters({
                           }}
                           className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-medium transition-colors cursor-pointer ${
                             filterTag === cat.name
-                              ? "bg-zinc-800 text-text-main"
-                              : "text-text-muted hover:bg-zinc-900 hover:text-text-main"
+                              ? "bg-muted text-text-main"
+                              : "text-text-muted hover:bg-muted/80 hover:text-text-main"
                           }`}
                         >
                           <span

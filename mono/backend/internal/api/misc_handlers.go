@@ -3,6 +3,8 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +21,23 @@ import (
 	"rmsmail/internal/crypto"
 	"rmsmail/internal/models"
 )
+
+// mcpAPIKeyFromHeaders returns the MCP API key from Authorization Bearer or X-API-Key only.
+// Query-string keys are rejected (leak via logs/Referer).
+func mcpAPIKeyFromHeaders(r *http.Request) string {
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimPrefix(auth, "Bearer ")
+	}
+	return r.Header.Get("X-API-Key")
+}
+
+func newMCPSessionID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("sess_%d", time.Now().UnixNano())
+	}
+	return "sess_" + hex.EncodeToString(b)
+}
 
 // mcpSession stores per-session state for MCP email_agent.
 type mcpSession struct {
@@ -304,39 +323,23 @@ func (h *Handler) MCPSSE(w http.ResponseWriter, r *http.Request) {
 	AppMetrics.ActiveSSEConns.Add(1)
 	defer AppMetrics.ActiveSSEConns.Add(-1)
 
-	// Authenticate via MCP API Key — multiple sources (matching rms-mcp)
-	apiKey := r.URL.Query().Get("token") // ?token= — primary for SSE transport
+	apiKey := mcpAPIKeyFromHeaders(r)
 	if apiKey == "" {
-		apiKey = r.URL.Query().Get("api_key")
-	}
-	if apiKey == "" {
-		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
-			apiKey = strings.TrimPrefix(auth, "Bearer ")
-		}
-	}
-	if apiKey == "" {
-		apiKey = r.Header.Get("X-API-Key")
+		WriteJSONError(w, http.StatusUnauthorized, "MCP API key required (Authorization Bearer or X-API-Key)")
+		return
 	}
 
-	// Try as MCP key first, resolve accountID, then fall back to JWT
-	var mcpAuthOK bool
-	var sessionAccountID string
-	if apiKey != "" {
-		keyRecord, err := h.Store.GetMCPKeyByAPIKey(r.Context(), apiKey)
-		if err == nil && keyRecord != nil {
-			mcpAuthOK = true
-			sessionAccountID = keyRecord.AccountID
-		}
-	}
-
-	if !mcpAuthOK {
+	keyRecord, err := h.Store.GetMCPKeyByAPIKey(r.Context(), apiKey)
+	if err != nil || keyRecord == nil || !keyRecord.IsActive {
 		WriteJSONError(w, http.StatusUnauthorized, "invalid or expired MCP API key")
 		return
 	}
+	sessionAccountID := keyRecord.AccountID
 	if sessionAccountID == "" {
 		WriteJSONError(w, http.StatusUnauthorized, "MCP API key must be bound to an account")
 		return
 	}
+	_ = h.Store.TouchMCPKeyLastUsed(r.Context(), keyRecord.ID)
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -351,18 +354,14 @@ func (h *Handler) MCPSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("Retry-After", "5000")
 
-	// Generate session ID and register it with accountID binding
-	sessionID := fmt.Sprintf("sess_%d", time.Now().UnixNano())
+	sessionID := newMCPSessionID()
 	mcpSessions.mu.Lock()
 	mcpSessions.data[sessionID] = &mcpSession{authenticated: true, accountID: sessionAccountID}
 	mcpSessions.mu.Unlock()
 	slog.Info(fmt.Sprintf("[MCP] session created: %s account=%s", sessionID, sessionAccountID))
 
-	// Send endpoint: client POSTs to /mcp/messages with session + token
+	// Endpoint uses sessionId only — never put the API key in the URL.
 	msgURL := fmt.Sprintf("%s/mcp/messages?sessionId=%s", requestPublicBaseURL(r), sessionID)
-	if apiKey != "" {
-		msgURL += "&token=" + apiKey
-	}
 	fmt.Fprintf(w, "event: endpoint\ndata: %s\n\n", msgURL)
 
 	// Clean up session on disconnect
@@ -458,38 +457,30 @@ func (h *Handler) mcpHandleJSONRPC(w http.ResponseWriter, r *http.Request) {
 	r.Body.Close()
 	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
-	// Auth: api_key from query, token from query, Authorization Bearer, or X-API-Key
-	apiKey := r.URL.Query().Get("api_key")
-	if apiKey == "" {
-		apiKey = r.URL.Query().Get("token")
-	}
-	if apiKey == "" {
-		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
-			apiKey = strings.TrimPrefix(auth, "Bearer ")
+	// Session-bound requests (MCPMessages) already have account in context — skip key auth.
+	if mcpAccountID(r) == "" {
+		apiKey := mcpAPIKeyFromHeaders(r)
+		if apiKey == "" {
+			slog.Info("[MCP] auth failed: no Authorization/X-API-Key header")
+			h.mcpWriteError(w, nil, -32001, "authentication required")
+			return
 		}
-	}
-	if apiKey == "" {
-		apiKey = r.Header.Get("X-API-Key")
-	}
-	if apiKey == "" {
-		slog.Info("[MCP] auth failed: no api_key/token/header")
-		h.mcpWriteError(w, nil, -32001, "authentication required")
-		return
-	}
-	keyRecord, keyErr := h.Store.GetMCPKeyByAPIKey(r.Context(), apiKey)
-	if keyErr != nil || keyRecord == nil || !keyRecord.IsActive {
-		pfx := apiKey
-		if len(pfx) > 8 {
-			pfx = pfx[:8]
+		keyRecord, keyErr := h.Store.GetMCPKeyByAPIKey(r.Context(), apiKey)
+		if keyErr != nil || keyRecord == nil || !keyRecord.IsActive {
+			pfx := apiKey
+			if len(pfx) > 8 {
+				pfx = pfx[:8]
+			}
+			slog.Info(fmt.Sprintf("[MCP] auth failed: invalid key prefix=%s...", pfx))
+			h.mcpWriteError(w, nil, -32001, "invalid api_key")
+			return
 		}
-		slog.Info(fmt.Sprintf("[MCP] auth failed: invalid key prefix=%s...", pfx))
-		h.mcpWriteError(w, nil, -32001, "invalid api_key")
-		return
-	}
-	if keyRecord.AccountID != "" {
-		ctx := context.WithValue(r.Context(), ctxMCPAccountKey, keyRecord.AccountID)
-		r = r.WithContext(ctx)
-		slog.Info(fmt.Sprintf("[MCP] POST auth: account=%s", keyRecord.AccountID))
+		_ = h.Store.TouchMCPKeyLastUsed(r.Context(), keyRecord.ID)
+		if keyRecord.AccountID != "" {
+			ctx := context.WithValue(r.Context(), ctxMCPAccountKey, keyRecord.AccountID)
+			r = r.WithContext(ctx)
+			slog.Info(fmt.Sprintf("[MCP] POST auth: account=%s", keyRecord.AccountID))
+		}
 	}
 
 	var req struct {

@@ -172,6 +172,7 @@
     "mcp_key_default": "MCP Key",
     "mcp_enable": "Enable",
     "mcp_disable": "Disable",
+    "mcp_last_used": "Last used {date}",
     "mcp_key": "Key",
     "mcp_no_key": "No key",
     "tab_oauth": "OAuth",

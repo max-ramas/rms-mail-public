@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import type { Folder } from "@/hooks/useEmails";
 import { apiFetch } from "@/lib/api-client";
+import { isTrashFolder } from "@/lib/is-trash-folder";
 
 interface UseTrashActionsOptions {
   selectedEmailId: string | null;
@@ -44,16 +45,7 @@ export function useTrashActions({
     const res = await apiFetch(`/api/folders`);
     const allFolders: Folder[] = await res.json();
 
-    const trashNames = [
-      "Trash",
-      "TRASH",
-      "trash",
-      "Корзина",
-      "Deleted Items",
-    ];
-    const trashes = allFolders.filter((f: Folder) =>
-      trashNames.includes(f.name),
-    );
+    const trashes = allFolders.filter((f: Folder) => isTrashFolder(f));
     if (trashes.length === 0) return false;
     if (!confirm(`Empty ${trashes.length} trash folder(s)?`)) return false;
 

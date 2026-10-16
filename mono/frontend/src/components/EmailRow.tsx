@@ -116,7 +116,7 @@ const EmailRow = React.memo(function EmailRow({
   };
 
   return (
-    <div className="relative overflow-hidden border-b border-zinc-800 bg-list-bg">
+    <div className="relative overflow-hidden border-b border-border bg-list-bg">
       {swipeEnabled && (
         <>
           <div className="absolute inset-y-0 left-0 w-1/2 bg-red-500/20 flex items-center justify-start px-6">
@@ -133,7 +133,10 @@ const EmailRow = React.memo(function EmailRow({
       )}
 
       <div
-        className={`${swipeEnabled ? "touch-pan-y" : ""} ${dragEnabled ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} px-4 py-2.5 flex items-start gap-2 relative group overflow-hidden ${
+        role="button"
+        tabIndex={0}
+        aria-current={selectedEmailId === email.id ? "true" : undefined}
+        className={`${swipeEnabled ? "touch-pan-y" : ""} ${dragEnabled ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} px-4 py-2.5 flex items-start gap-2 relative group overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
           selectedEmailId === email.id
             ? "bg-muted before:absolute before:start-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary z-10"
             : "bg-list-bg hover:bg-muted"
@@ -181,9 +184,22 @@ const EmailRow = React.memo(function EmailRow({
           }
           onSelectEmail(email.id);
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelectEmail(email.id);
+          }
+        }}
       >
         <button
+          type="button"
           draggable={false}
+          aria-label={
+            selectedIds.has(email.id) || selectAllActive
+              ? t("bulk_clear_selection")
+              : t("select_all")
+          }
+          aria-pressed={selectedIds.has(email.id) || selectAllActive}
           onClick={(e) => {
             e.stopPropagation();
             if (!draggedRef.current) toggleSelected(email.id);
@@ -203,11 +219,16 @@ const EmailRow = React.memo(function EmailRow({
                 !email.is_read ? "font-semibold" : "font-normal"
               }`}
             >
-              <span
+              <button
+                type="button"
+                aria-pressed={email.is_flagged}
+                aria-label={
+                  email.is_flagged ? t("actions.unflag") : t("actions.flag")
+                }
                 className={`cursor-pointer text-sm select-none ${
                   email.is_flagged
                     ? "text-yellow-400"
-                    : "text-zinc-700 hover:text-text-muted"
+                    : "text-muted-foreground hover:text-text-muted"
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -215,7 +236,7 @@ const EmailRow = React.memo(function EmailRow({
                 }}
               >
                 {email.is_flagged ? "★" : "☆"}
-              </span>
+              </button>
               {email.is_answered && (
                 <span
                   className="text-sky-400 text-xs"

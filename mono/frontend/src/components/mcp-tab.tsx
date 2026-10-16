@@ -27,6 +27,7 @@ interface MCPKey {
   full_key?: string;
   is_active: boolean;
   created_at: string;
+  last_used_at?: string | null;
 }
 
 interface MCPConnectInfo {
@@ -317,6 +318,13 @@ export function MCPTab({ accountId }: { accountId: string }) {
                     <code className="text-xs text-muted-foreground break-all">
                       {shownKeys[k.id] || `${k.key_prefix}••••••`}
                     </code>
+                    {k.last_used_at ? (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t("mcp_last_used", {
+                          date: new Date(k.last_used_at).toLocaleString(),
+                        })}
+                      </p>
+                    ) : null}
                   </div>
                   {!shownKeys[k.id] ? (
                     <Button

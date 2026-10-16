@@ -1,5 +1,36 @@
 # Changelog
 
+## [3.1.10] — 2026-10-16
+
+Audit remediation (v3.1.9 findings). Phases P0–P5; HTML EML confirmation buttons and dual IMAP session merge remain **planned** (external `.eml` samples / load-test).
+
+### Security
+- **IMAP STARTTLS/SSL fail-closed**: no silent `DialInsecure` fallback after declared STARTTLS/SSL; unit matrix for dial kinds.
+- **MCP header-only auth**: accept `Authorization: Bearer` / `X-API-Key` only; SSE `endpoint` URL uses opaque `sessionId` (no API key in query); `last_used_at` touched on successful auth.
+- **Rate limits**: Redis limiter degrades to in-memory on Redis errors; MCP `/mcp/sse` + `/mcp/messages` 30/min/IP; global API 60/min/IP (health skipped); `/metrics` behind `AdminOnly`.
+- **SSE logout**: cookie JWT path uses `ValidateTokenNotRevoked` (blacklist); JWT `?token=` rejected everywhere including `/mcp/*`.
+
+### Sync integrity
+- **UIDVALIDITY change**: clear queue → purge local emails (DB + body files) → reset `last_sync_uid` → store new validity → full resync; regression test.
+
+### Frontend
+- Draft autosave invalidates only `["email", id]` (+ folder counts), not `emails-infinite`.
+- `refreshMailInbox` uses refetch only (no invalidate+refetch storm).
+- Periodic poll pauses while SSE `readyState`/connected is open.
+- Trash detection via `folders.special_use === "trash"` with name fallbacks; Radix dropdown; theme tokens; i18n desktop notifications; light paper for HTML body in dark chrome.
+
+### Backend / tech debt
+- Migration `026_folders_special_use` (+ mono); LIST with `ReturnSpecialUse`.
+- MCP store parity tests (SQLite always; Postgres `integration` + `DATABASE_URL`).
+- `ToggleMCPKey` moved to `integrations.go`; `ports.JobStore` breaks `sync/job_worker` → `api` import.
+- Webhook/MCP notes in `reverse-proxy.md` (Unified webhooks = Redis).
+- **Mono/MonoPro login**: after IMAP success, decrypt failure no longer calls `CreateAccount` (unique email 500); re-encrypt via `UpdateAccount` when the row exists.
+
+### Planned (not in 3.1.10)
+- Confirmation-button / table HTML from user-supplied `.eml` samples.
+- Dual IMAP session merge (shared pool IDLE+sync) after load-test.
+- Keyboard-first inbox (post a11y rows).
+
 ## [3.1.9] — 2026-10-15
 
 ### Added

@@ -39,6 +39,7 @@ type SyncStore interface {
 	GetFolderByID(ctx context.Context, id string) (*models.Folder, error)
 	UpdateFolderLastUID(ctx context.Context, folderID string, lastUID int) error
 	UpdateFolderUIDValidity(ctx context.Context, folderID string, uidValidity uint32) error
+	UpdateFolderSpecialUse(ctx context.Context, folderID string, specialUse string) error
 
 	GetEmail(ctx context.Context, id string, accountID string) (*models.Email, error)
 	GetEmailByMsgIDAccount(ctx context.Context, msgID, accountID string) (*models.Email, error)

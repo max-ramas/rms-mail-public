@@ -11,13 +11,15 @@ your site proxy.
 
 ## Editions
 
-| Edition | After install | Public port | API on host |
-|---------|---------------|-------------|-------------|
-| **Mono** | `cp docker-compose-m.yml docker-compose.yml`, `.env` from `.env-m.example` | **3000** (UI) | **No** — API/MCP only inside Docker |
-| **Unified** | `cp docker-compose-u.yml docker-compose.yml`, `.env` from `.env-u.example` | **3000** (UI) | **8080** optional (backend also published) |
+| Edition | Compose | Public port | API on host (default since v3.1.7) |
+|---------|---------|-------------|-------------------------------------|
+| **Mono** | `docker-compose-m.yml`, `.env-m.example` | **3000** (UI) | **No** — API/MCP only inside Docker |
+| **Mono Pro** | `docker-compose-mp.yml`, `.env-mp.example` | **3000** (UI) | **No** — same as Mono |
+| **Unified** | `docker-compose-u.yml`, `.env-u.example` | **3000** (UI) | **No** — backend `expose` only (was `:8080` before v3.1.7) |
 
-Both editions serve the UI at `http://localhost:3000` right after install. In production, terminate
-TLS on your domain and proxy to `127.0.0.1:3000` (recommended) or use split routing (Unified only).
+All shipped editions serve the UI at `http://localhost:3000` after install. In production, terminate
+TLS on your domain and proxy to `127.0.0.1:3000` (recommended). Split routing to `:8080` is **debug-only**
+(uncomment `ports:` in compose — not the default).
 
 In `.env` (step 3 of Quick Start), set your public URL:
 
@@ -32,9 +34,9 @@ Restart after changes: `docker compose up -d`.
 
 ---
 
-## Recommended: single public port
+## Recommended: single public port (all editions)
 
-Works for **Mono and Unified**. One upstream — the UI container on **`:3000`**. The frontend proxies
+Works for **Mono, Mono Pro, and Unified** (default since **v3.1.7**). One upstream — the UI container on **`:3000`**. The frontend proxies
 `/api/*` and `/mcp/*` to the backend inside Docker; your edge proxy only needs to reach the UI.
 
 ```nginx
@@ -86,14 +88,14 @@ server {
 
 Do **not** hardcode `X-Forwarded-Proto https` — always use `$scheme`.
 
-> **Mono:** do not point the site proxy at `:8080` only — the backend is not meant to be the sole
+> **All editions (v3.1.7+):** do not point the site proxy at `:8080` only — the backend is not the default
 > public entry. Use **`:3000`**.
 
 ---
 
-## Optional: split routing (Unified)
+## Optional: split routing (debug only)
 
-Only if you intentionally expose the backend on the host (`PORT=8080` in `.env`). Nginx sends API and
+Only if you **uncomment** backend `ports:` in compose and intentionally expose the API on the host (`PORT=8080`). Not the default since v3.1.7 for Unified/Mono Pro. Nginx sends API and
 MCP to the backend, everything else to the UI.
 
 ```nginx
@@ -171,14 +173,37 @@ proxy_read_timeout 86400s;    # 3600s minimum
 
 ---
 
+## MCP authentication (v3.1.10+)
+
+MCP clients must send the API key in headers only:
+
+- `Authorization: Bearer <key>` or `X-API-Key: <key>`
+- Query `?token=` / `?api_key=` are **rejected** (keys must not appear in URLs or access logs)
+- After SSE connect, the `endpoint` event uses an opaque `sessionId` only (no key in the messages URL)
+
+---
+
+## Webhooks (Unified vs Mono)
+
+| Edition | Delivery path |
+|---------|----------------|
+| **Unified** | Redis / Asynq queue only — outbound webhook workers require Redis |
+| **Mono** | DB job / local retry table (`webhook_queue` mono path) |
+
+If Redis is down on Unified, webhook enqueue fails closed (admin UI should show errors / metrics); do not assume silent in-process delivery. Ensure Redis health before relying on webhooks in production.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | **Disconnected** in inbox | SSE buffered | `proxy_buffering off` on the path to `:3000` (or `/api/` in split mode) |
 | **MCP 404** | `/mcp/*` not routed | Use single-port `:3000`, or add `location /mcp/` in split mode |
+| **MCP 401** | Key in query string | Use `Authorization: Bearer` / `X-API-Key` headers only |
 | **Mixed content** (`http://` MCP links) | Missing HTTPS hints | `FRONTEND_URL=https://…` in `.env`; `X-Forwarded-Proto $scheme` |
-| **404 on /api/** | Wrong upstream | **Mono:** proxy `:3000`, not `:8080` alone |
+| **404 on /api/** | Wrong upstream | Proxy **`:3000`**, not `:8080` alone (all editions, v3.1.7+) |
 | **502 Bad Gateway** | Container down / wrong port | `docker ps`; check `UI_PORT` / `PORT` in `.env` |
 | **Slow SSE** | Short `proxy_read_timeout` | Raise to 3600s–86400s |
 | **Telegram webhook fails** | Wrong public URL | `https://yourdomain.com/api/tg/webhook` |
+| **Webhooks not firing (Unified)** | Redis down | Restore Redis; check Asynq/metrics |

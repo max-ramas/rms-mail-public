@@ -9,6 +9,7 @@
 - **Unread Counters**: Fixed background counter drift where snoozed emails were counted as unread. `RefreshUnreadCounts` now excludes snoozed emails (`snooze_until <= NOW()`), matching the email list view.
 - **Email List Stability (SSE)**: Eliminated email list flickering during background sync and SSE updates (such as `folder_updated`). Replaced destructive query resets with seamless cache page slicing and background invalidation (`keepPreviousData`).
 - **Gmail Folder Hierarchy & Sorting**: Fixed chaotic alphabetical folder sorting in the sidebar. Standard folders (`Inbox`, `Sent`, `Drafts`, `Important`, `Starred`, `All Mail`, `Trash`, `Spam`) across localized folder names and `[Gmail]/` prefixes are now properly structured and prioritized before custom labels.
+- **Security**: Upgraded `golang.org/x/text` from `v0.39.0` to `v0.41.0` to resolve `GO-2026-6629` vulnerability.
 
 ## [3.1.8] — 2026-07-27
 

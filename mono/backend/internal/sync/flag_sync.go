@@ -2,7 +2,7 @@ package sync
 
 import "rmsmail/internal/models"
 
-const inboundFlagSyncLimit = 2000
+const inboundFlagSyncLimit = 400
 
 func mergeFlagSyncCandidates(primary, extra []models.Email) []models.Email {
 	if len(extra) == 0 {

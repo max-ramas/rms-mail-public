@@ -18,7 +18,6 @@ import (
 	"rmsmail/internal/auth"
 	"rmsmail/internal/models"
 	"rmsmail/internal/notification"
-
 )
 
 // SyncStore is the store interface needed by sync Manager and workers.
@@ -45,6 +44,7 @@ type SyncStore interface {
 	GetEmailByMsgIDAccount(ctx context.Context, msgID, accountID string) (*models.Email, error)
 	EmailExistsByMsgID(ctx context.Context, accountID, msgID string) (bool, error)
 	GetEmailIDByFolderUID(ctx context.Context, accountID, folderPath string, uid uint32) (string, error)
+	GetFolderEmailUIDMap(ctx context.Context, folderID string) (map[uint32]string, error)
 	SaveEmail(ctx context.Context, email models.Email) error
 	SaveEmailToFolder(ctx context.Context, email models.Email, folderID string) (bool, error)
 	UpdateEmailHasAttachments(ctx context.Context, emailID string, accountID string, has bool) error

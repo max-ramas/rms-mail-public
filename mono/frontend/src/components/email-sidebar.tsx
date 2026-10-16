@@ -223,7 +223,7 @@ const EmailSidebarComponent = ({
               </span>
             ) : (
               <button
-                onClick={() => {}}
+                onClick={(() => {})}
                 className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-semibold hover:bg-amber-500/10 hover:text-amber-600 transition-colors"
               >
                 {t("free_edition")}

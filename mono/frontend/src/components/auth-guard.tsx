@@ -25,6 +25,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(id);
   }, []);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isPublic) setAuthValid(null);
+  }, [isPublic]);
+
   // Validate session cookie on protected routes
   useEffect(() => {
     if (!mounted || isPublic) return;

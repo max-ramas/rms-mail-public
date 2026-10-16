@@ -213,6 +213,18 @@ func (w *SyncWorker) syncFolder(ctx context.Context, c *imapclient.Client, f *Fe
 
 	if selectData.NumMessages == 0 {
 		slog.Info(fmt.Sprintf("[%s] Folder %s is empty", w.Account.Email, folder.Path))
+		folderID := folder.FolderID
+		if folderID == "" {
+			if dbFolders, _ := f.Store.GetFolders(ctx, w.Account.ID); dbFolders != nil {
+				for _, df := range dbFolders {
+					if df.Path == folder.Path {
+						folderID = df.ID
+						break
+					}
+				}
+			}
+		}
+		w.reconcileFolderExpunges(ctx, c, f, folder.Path, folderID, 0)
 		return nil
 	}
 
@@ -291,6 +303,7 @@ func (w *SyncWorker) syncFolderByUID(ctx context.Context, c *imapclient.Client, 
 	slog.Info(fmt.Sprintf("[%s] Folder %s: NumMessages=%d, UIDNext=%d, fetching UIDs %d..%d to enqueue", w.Account.Email, folderPath, selectData.NumMessages, selectData.UIDNext, start, end))
 
 	if start > end {
+		w.reconcileFolderExpunges(ctx, c, f, folderPath, folderID, selectData.NumMessages)
 		return nil
 	}
 
@@ -361,6 +374,7 @@ func (w *SyncWorker) syncFolderByUID(ctx context.Context, c *imapclient.Client, 
 
 		slog.Info(fmt.Sprintf("[%s] Folder %s: Full sync complete (up to UID %d processed)",
 			w.Account.Email, folderPath, maxProcessedUID))
+		w.reconcileFolderExpunges(ctx, c, f, folderPath, folderID, selectData.NumMessages)
 		return nil
 	}
 
@@ -384,6 +398,7 @@ func (w *SyncWorker) syncFolderByUID(ctx context.Context, c *imapclient.Client, 
 		if folderID != "" && end > imap.UID(lastUID) {
 			f.Store.UpdateFolderLastUID(ctx, folderID, int(end))
 		}
+		w.reconcileFolderExpunges(ctx, c, f, folderPath, folderID, selectData.NumMessages)
 		return nil
 	}
 
@@ -434,5 +449,6 @@ func (w *SyncWorker) syncFolderByUID(ctx context.Context, c *imapclient.Client, 
 	default:
 	}
 
+	w.reconcileFolderExpunges(ctx, c, f, folderPath, folderID, selectData.NumMessages)
 	return nil
 }

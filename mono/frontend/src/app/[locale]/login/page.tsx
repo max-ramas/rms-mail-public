@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Mail } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -29,6 +30,7 @@ export default function LoginPage({
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [scanAccounts, setScanAccounts] = useState<ScanLocalAccount[] | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -47,7 +49,7 @@ export default function LoginPage({
     setLoading(true);
 
     try {
-      const payload: Record<string, string | number | boolean> = { email, password };
+      const payload: Record<string, string | number | boolean> = { email, password, remember_me: rememberMe };
 
       const res = await axios.post("/api/auth/login", payload);
 
@@ -151,6 +153,20 @@ export default function LoginPage({
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              />
+              <label
+                htmlFor="remember-me"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-foreground"
+              >
+                {t("remember_me") || "Remember me"}
+              </label>
             </div>
 
             {error && (

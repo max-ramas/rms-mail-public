@@ -476,8 +476,8 @@ func (h *Handler) mcpHandleJSONRPC(w http.ResponseWriter, r *http.Request) {
 		h.mcpWriteError(w, nil, -32001, "authentication required")
 		return
 	}
-	keys, kerr := h.Store.ListMCPKeys(r.Context())
-	if kerr != nil || !mcpValidateKey(keys, h.Store, r.Context(), apiKey) {
+	keyRecord, keyErr := h.Store.GetMCPKeyByAPIKey(r.Context(), apiKey)
+	if keyErr != nil || keyRecord == nil || !keyRecord.IsActive {
 		pfx := apiKey
 		if len(pfx) > 8 {
 			pfx = pfx[:8]
@@ -486,10 +486,7 @@ func (h *Handler) mcpHandleJSONRPC(w http.ResponseWriter, r *http.Request) {
 		h.mcpWriteError(w, nil, -32001, "invalid api_key")
 		return
 	}
-
-	// Resolve accountID from MCP key and inject into request context
-	keyRecord, keyErr := h.Store.GetMCPKeyByAPIKey(r.Context(), apiKey)
-	if keyErr == nil && keyRecord != nil && keyRecord.AccountID != "" {
+	if keyRecord.AccountID != "" {
 		ctx := context.WithValue(r.Context(), ctxMCPAccountKey, keyRecord.AccountID)
 		r = r.WithContext(ctx)
 		slog.Info(fmt.Sprintf("[MCP] POST auth: account=%s", keyRecord.AccountID))
@@ -527,18 +524,6 @@ func (h *Handler) mcpHandleJSONRPC(w http.ResponseWriter, r *http.Request) {
 		slog.Info(fmt.Sprintf("[MCP] unknown method: %s", req.Method))
 		h.mcpWriteError(w, req.ID, -32601, "method not found: "+req.Method)
 	}
-}
-
-func mcpValidateKey(keys []models.MCPKey, store Store, ctx context.Context, apiKey string) bool {
-	for _, k := range keys {
-		if k.IsActive {
-			fullKey, err := store.GetMCPKeyFull(ctx, k.ID)
-			if err == nil && fullKey == apiKey {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (h *Handler) mcpWriteError(w http.ResponseWriter, id *int64, code int, msg string) {

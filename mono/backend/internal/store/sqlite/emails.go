@@ -629,6 +629,26 @@ func (s *Storage) GetEmailIDByFolderUID(ctx context.Context, accountID, folderPa
 	return id, nil
 }
 
+// GetFolderEmailUIDMap returns uid → email id for messages stored in a folder.
+func (s *Storage) GetFolderEmailUIDMap(ctx context.Context, folderID string) (map[uint32]string, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT uid, id FROM emails WHERE folder_id = ? AND uid > 0`, folderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[uint32]string)
+	for rows.Next() {
+		var uid int64
+		var id string
+		if err := rows.Scan(&uid, &id); err != nil {
+			return nil, err
+		}
+		out[uint32(uid)] = id
+	}
+	return out, rows.Err()
+}
+
 func (s *Storage) DeleteEmailsInFolder(ctx context.Context, folderID string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -1156,7 +1176,7 @@ func (s *Storage) RefreshUnreadCounts(ctx context.Context) error {
 			FROM emails e
 			INNER JOIN folders f ON f.id = e.folder_id
 			WHERE e.is_read = 0 AND e.is_muted = 0
-				AND NOT (f.is_inbox = 1 AND COALESCE(e.smart_category, 0) != 0)
+				AND (e.snooze_until IS NULL OR e.snooze_until <= datetime('now')) AND NOT (f.is_inbox = 1 AND COALESCE(e.smart_category, 0) != 0)
 			GROUP BY e.folder_id
 		)
 		UPDATE folders SET unread_count = uc.cnt
@@ -1172,7 +1192,7 @@ func (s *Storage) RefreshUnreadCounts(ctx context.Context) error {
 			SELECT e.folder_id FROM emails e
 			INNER JOIN folders f ON f.id = e.folder_id
 			WHERE e.is_read = 0 AND e.is_muted = 0
-				AND NOT (f.is_inbox = 1 AND COALESCE(e.smart_category, 0) != 0)
+				AND (e.snooze_until IS NULL OR e.snooze_until <= datetime('now')) AND NOT (f.is_inbox = 1 AND COALESCE(e.smart_category, 0) != 0)
 		)
 	`); err != nil {
 		return err

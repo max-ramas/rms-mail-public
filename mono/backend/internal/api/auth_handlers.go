@@ -33,6 +33,7 @@ type LoginRequest struct {
 	SMTPHost       string `json:"smtp_host,omitempty"`
 	SMTPPort       int    `json:"smtp_port,omitempty"`
 	SMTPEncryption string `json:"smtp_encryption,omitempty"`
+	RememberMe     bool   `json:"remember_me,omitempty"`
 }
 
 // LoginResponse is returned on successful authentication.
@@ -194,20 +195,12 @@ func (h *Handler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT token (first admin always receives is_admin)
-	token, err := h.issueAuthToken(r.Context(), req.Email, true)
+	token, err := h.issueAuthToken(r.Context(), req.Email, true, false)
 	if err != nil {
 		WriteInternalError(w, r, err)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   r.TLS != nil,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   int(24 * time.Hour / time.Second), // 24 hours
-	})
+	middleware.SetTokenCookie(w, r, token, false)
 
 	resp := LoginResponse{
 		Token:   token,
@@ -267,23 +260,15 @@ func (h *Handler) resolveAdminClaim(ctx context.Context, email string) bool {
 	}
 
 	if edition.IsMonoPro() {
-		// 1. Check ADMIN_EMAIL env var
-		adminEmail := os.Getenv("ADMIN_EMAIL")
-		if adminEmail != "" && email == adminEmail {
+		// ADMIN_EMAIL is required at process start; only that mailbox is admin unless users.role=admin.
+		adminEmail := strings.TrimSpace(os.Getenv("ADMIN_EMAIL"))
+		if adminEmail != "" && strings.EqualFold(email, adminEmail) {
 			return true
 		}
-
-		// 2. Check users table role
 		if user, err := h.Store.GetUserByEmail(ctx, email); err == nil && user != nil && user.Role == "admin" {
 			return true
 		}
-
-		// 3. Fallback: Check if this user is the first registered account
-		firstUserEmail, err := h.Store.GetFirstRegisteredAccountEmail(ctx)
-		if err == nil && firstUserEmail != "" && email == firstUserEmail {
-			return true
-		}
-		return false // Mono Pro users who are not the admin do not get is_admin
+		return false
 	}
 
 	_, hash, err := h.Store.GetAdminByEmail(ctx, email)
@@ -291,9 +276,9 @@ func (h *Handler) resolveAdminClaim(ctx context.Context, email string) bool {
 }
 
 // issueAuthToken mints a JWT and optionally sets forceAdmin for first-time setup.
-func (h *Handler) issueAuthToken(ctx context.Context, email string, forceAdmin bool) (string, error) {
+func (h *Handler) issueAuthToken(ctx context.Context, email string, forceAdmin bool, rememberMe bool) (string, error) {
 	isAdmin := forceAdmin || h.resolveAdminClaim(ctx, email)
-	return middleware.GenerateTokenWithAdmin(email, isAdmin)
+	return middleware.GenerateTokenWithAdmin(email, isAdmin, rememberMe)
 }
 
 // HandleChangePassword updates the authenticated admin password.
@@ -400,12 +385,12 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		token, err := h.issueAuthToken(r.Context(), req.Email, false)
+		token, err := h.issueAuthToken(r.Context(), req.Email, false, req.RememberMe)
 		if err != nil {
 			WriteInternalError(w, r, err)
 			return
 		}
-		middleware.SetTokenCookie(w, r, token)
+		middleware.SetTokenCookie(w, r, token, req.RememberMe)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(LoginResponse{
 			Token:   token,
@@ -450,6 +435,7 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var token string
+	var err error
 
 	if err := mail.ValidateManualConfig(imapHost, smtpHost); err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
@@ -465,10 +451,9 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	loginErr := tryIMAPLogin(req.Email, req.Password, imapHost, imapPort, imapEncryption)
 	if loginErr == nil {
-		// IMAP login successful — create account if needed, issue JWT
+		// IMAP login successful — create account if needed, refresh stored password, issue JWT
 		acct, err := h.Store.GetAccountCredentialsByEmail(r.Context(), req.Email)
 		if err != nil || acct == nil {
-			// Auto-create account
 			newAcc, err := h.Store.CreateAccount(r.Context(),
 				req.Email, "", "custom", imapHost, imapPort, useSSL, imapEncryption,
 				smtpHost, smtpPort, useSSL, smtpEncryption,
@@ -482,30 +467,42 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			if h.SyncManager != nil {
 				h.SyncManager.TriggerRefresh()
 			}
+		} else if acct.PasswordEncrypted != req.Password {
+			// Keep sync credentials in sync after mailbox password changes
+			username := acct.Username
+			if username == "" {
+				username = req.Email
+			}
+			if _, err := h.Store.UpdateAccount(r.Context(),
+				acct.ID, acct.Email, acct.Name, acct.Provider,
+				acct.IMAPHost, int(acct.IMAPPort), acct.IMAPSSL, acct.IMAPEncryption,
+				acct.SMTPHost, int(acct.SMTPPort), acct.SMTPSSL, acct.SMTPEncryption,
+				username, req.Password, acct.AIProviderConfig, acct.Signature); err != nil {
+				slog.Warn("login: failed to refresh stored account password", "email", req.Email, "error", err)
+			} else if h.SyncManager != nil {
+				h.SyncManager.TriggerRefresh()
+			}
 		}
 
-		// Cache bcrypt hash for offline fallback
-		hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-		h.Store.UpdateAdminPassword(r.Context(), req.Email, string(hash))
+		h.cacheMonoLoginPassword(r.Context(), req.Email, req.Password)
 
-		token, err = h.issueAuthToken(r.Context(), req.Email, false)
+		token, err = h.issueAuthToken(r.Context(), req.Email, false, req.RememberMe)
 		if err != nil {
 			WriteInternalError(w, r, err)
 			return
 		}
+	} else if imapAuthRejected(loginErr) {
+		slog.Info("login: IMAP rejected credentials", "email", req.Email, "error", loginErr)
+		WriteJSONError(w, http.StatusUnauthorized, "invalid credentials")
+		return
 	} else {
-		// IMAP failed — try bcrypt (offline fallback)
-		_, dbHash, err := h.Store.GetAdminByEmail(r.Context(), req.Email)
-		if err != nil || dbHash == "" {
-			WriteJSONError(w, http.StatusUnauthorized, "invalid credentials")
+		// IMAP unreachable / transient — offline fallbacks (bcrypt admin hash, then stored account password)
+		slog.Info("login: IMAP unreachable, trying offline fallback", "email", req.Email, "error", loginErr)
+		if !h.monoOfflineLoginOK(r.Context(), req.Email, req.Password) {
+			WriteJSONError(w, http.StatusServiceUnavailable, "mail server temporarily unavailable")
 			return
 		}
-		if bcrypt.CompareHashAndPassword([]byte(dbHash), []byte(req.Password)) != nil {
-			WriteJSONError(w, http.StatusUnauthorized, "invalid credentials")
-			return
-		}
-		// Generate token for cached credentials
-		token, err = h.issueAuthToken(r.Context(), req.Email, false)
+		token, err = h.issueAuthToken(r.Context(), req.Email, false, req.RememberMe)
 		if err != nil {
 			WriteInternalError(w, r, err)
 			return
@@ -522,7 +519,7 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		h.Store.UpsertUser(r.Context(), req.Email, req.Email, role)
 	}
 
-	middleware.SetTokenCookie(w, r, token)
+	middleware.SetTokenCookie(w, r, token, req.RememberMe)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(LoginResponse{
 		Token:   token,
@@ -541,11 +538,96 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// tryIMAPLogin attempts IMAP authentication, trying TLS, STARTTLS, and plain
-// connections in sequence until one succeeds or all fail.
-// Uses IMAP LOGIN command (most compatible) with SASL PLAIN as fallback.
+func imapDialOpts(serverName string) *imapclient.Options {
+	tlsCfg := &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"}
+	if serverName != "" && net.ParseIP(serverName) == nil {
+		tlsCfg.ServerName = serverName
+	}
+	return &imapclient.Options{
+		Dialer:    &net.Dialer{Timeout: 15 * time.Second},
+		TLSConfig: tlsCfg,
+	}
+}
+
+// imapAuthRejected reports genuine IMAP credential rejection (not network flakiness).
+func imapAuthRejected(err error) bool {
+	if err == nil {
+		return false
+	}
+	if imapTransient(err) {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "authenticationfailed") ||
+		strings.Contains(msg, "authentication failed") ||
+		strings.Contains(msg, "invalid credentials") ||
+		strings.Contains(msg, "login failed") ||
+		strings.Contains(msg, "incorrect password") ||
+		strings.Contains(msg, "incorrect user") ||
+		strings.Contains(msg, "no matching login") ||
+		(strings.Contains(msg, "no ") && (strings.Contains(msg, "auth") || strings.Contains(msg, "login") || strings.Contains(msg, "password") || strings.Contains(msg, "credential")))
+}
+
+func imapTransient(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "timeout") ||
+		strings.Contains(msg, "deadline exceeded") ||
+		strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "use of closed network connection") ||
+		strings.Contains(msg, "i/o timeout") ||
+		strings.Contains(msg, "eof") ||
+		strings.Contains(msg, "network is unreachable") ||
+		strings.Contains(msg, "no such host") ||
+		strings.Contains(msg, "tls handshake") ||
+		strings.Contains(msg, "cannot read tag")
+}
+
+// cacheMonoLoginPassword upserts a bcrypt hash so offline login works after IMAP outages.
+func (h *Handler) cacheMonoLoginPassword(ctx context.Context, email, password string) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return
+	}
+	_, existing, err := h.Store.GetAdminByEmail(ctx, email)
+	if err != nil {
+		slog.Warn("login: failed to read admin for password cache", "email", email, "error", err)
+		return
+	}
+	if existing == "" {
+		if _, err := h.Store.CreateAdmin(ctx, email, string(hash)); err != nil {
+			slog.Warn("login: failed to create admin password cache", "email", email, "error", err)
+		}
+		return
+	}
+	if err := h.Store.UpdateAdminPassword(ctx, email, string(hash)); err != nil {
+		slog.Warn("login: failed to update admin password cache", "email", email, "error", err)
+	}
+}
+
+// monoOfflineLoginOK accepts bcrypt admin hash or decrypted stored IMAP password.
+func (h *Handler) monoOfflineLoginOK(ctx context.Context, email, password string) bool {
+	_, dbHash, err := h.Store.GetAdminByEmail(ctx, email)
+	if err == nil && dbHash != "" && bcrypt.CompareHashAndPassword([]byte(dbHash), []byte(password)) == nil {
+		return true
+	}
+	acct, err := h.Store.GetAccountCredentialsByEmail(ctx, email)
+	if err == nil && acct != nil && acct.PasswordEncrypted != "" && acct.PasswordEncrypted == password {
+		return true
+	}
+	return false
+}
+
+// tryIMAPLogin attempts IMAP authentication with the encryption mode that matches the port.
+// Uses IMAP LOGIN (most compatible) with SASL PLAIN as fallback.
+// Network/transient errors are not treated as wrong passwords.
 func tryIMAPLogin(email, password, host string, port int, encryption string) error {
-	addr := fmt.Sprintf("%s:%d", host, port)
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	opts := imapDialOpts(host)
 
 	type attempt struct {
 		dial func() (*imapclient.Client, error)
@@ -553,70 +635,23 @@ func tryIMAPLogin(email, password, host string, port int, encryption string) err
 	}
 
 	var attempts []attempt
-	switch encryption {
+	switch strings.ToLower(encryption) {
 	case "starttls":
 		attempts = []attempt{
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialStartTLS(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "STARTTLS"},
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialInsecure(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "plain"},
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialTLS(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "TLS"},
+			{func() (*imapclient.Client, error) { return imapclient.DialStartTLS(addr, opts) }, "STARTTLS"},
+			{func() (*imapclient.Client, error) { return imapclient.DialInsecure(addr, opts) }, "plain"},
 		}
 	case "none":
 		attempts = []attempt{
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialInsecure(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "plain"},
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialStartTLS(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "STARTTLS"},
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialTLS(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "TLS"},
+			{func() (*imapclient.Client, error) { return imapclient.DialInsecure(addr, opts) }, "plain"},
+			{func() (*imapclient.Client, error) { return imapclient.DialStartTLS(addr, opts) }, "STARTTLS"},
 		}
-	default: // "ssl" or unknown — try TLS first
+	default: // "ssl" / empty — IMAPS only (do not probe STARTTLS/plain on :993)
 		attempts = []attempt{
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialTLS(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "TLS"},
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialStartTLS(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "STARTTLS"},
-			{func() (*imapclient.Client, error) {
-				return imapclient.DialInsecure(addr, &imapclient.Options{
-					Dialer:    &net.Dialer{Timeout: 5 * time.Second},
-					TLSConfig: &tls.Config{InsecureSkipVerify: os.Getenv("ALLOW_INSECURE_TLS") == "true"},
-				})
-			}, "plain"},
+			{func() (*imapclient.Client, error) { return imapclient.DialTLS(addr, opts) }, "TLS"},
 		}
+		// One retry for flaky mail servers under IDLE load
+		attempts = append(attempts, attempts[0])
 	}
 
 	var lastErr error
@@ -627,16 +662,18 @@ func tryIMAPLogin(email, password, host string, port int, encryption string) err
 			slog.Info(fmt.Sprintf("tryIMAPLogin: dial %s %s failed: %v", a.name, addr, err))
 			continue
 		}
-		// Use IMAP LOGIN command (compatible with Dovecot, Courier, etc.)
-		// Fall back to SASL PLAIN if server requires it.
 		loginErr := client.Login(email, password).Wait()
 		if loginErr != nil {
 			saslClient := sasl.NewPlainClient("", email, password)
 			if authErr := client.Authenticate(saslClient); authErr != nil {
 				client.Close()
 				slog.Info(fmt.Sprintf("tryIMAPLogin: auth failed via %s for %s: %v", a.name, email, authErr))
-				// Auth error = wrong credentials, no point trying other dial methods
-				return authErr
+				lastErr = authErr
+				if imapAuthRejected(authErr) {
+					return authErr
+				}
+				// Transient after dial — retry next attempt
+				continue
 			}
 		}
 		client.Close()

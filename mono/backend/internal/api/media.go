@@ -36,7 +36,7 @@ var hmacKey []byte
 func InitCamoKey() { initCamoKey() }
 
 // camoKeyFromEncryption derives a stable Camo HMAC key from ENCRYPTION_KEYS / ENCRYPTION_KEY.
-// Mono does not require a separate CAMO_HMAC_KEY env var.
+// Mono may omit CAMO_HMAC_KEY and use this derivation in any environment.
 func camoKeyFromEncryption() []byte {
 	primary := crypto.GetPrimaryEncryptionKey()
 	if primary == "" {
@@ -51,6 +51,7 @@ func initCamoKey() {
 	}
 	key := os.Getenv("CAMO_HMAC_KEY")
 	if key == "" {
+		// Mono: optional — derive from ENCRYPTION_KEYS (production and development).
 		if edition.IsMono() {
 			if derived := camoKeyFromEncryption(); len(derived) > 0 {
 				hmacKey = derived
@@ -63,7 +64,7 @@ func initCamoKey() {
 			slog.Error("CAMO_HMAC_KEY environment variable is required in production. Generate: openssl rand -hex 32")
 			os.Exit(1)
 		}
-		// Dev only: auto-generate random key (regenerates on restart).
+		// Dev only (non-Mono or Mono without ENCRYPTION_KEYS): auto-generate (regenerates on restart).
 		hmacKey = make([]byte, 32)
 		_, _ = rand.Read(hmacKey)
 		slog.Info("CAMO_HMAC_KEY not set — using auto-generated key (development only)")

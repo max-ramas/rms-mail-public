@@ -136,7 +136,7 @@ func (h *Handler) InvalidateEmailCache(ctx context.Context, accountID string) {
 	// MemCache (Mono edition) — clear relevant caches
 	if h.MemCache != nil {
 		if accountID != "" {
-			h.MemCache.Del("folders:" + accountID)
+			h.MemCache.Del("folders:"+accountID, "groups:list")
 			for _, k := range h.MemCache.Keys() {
 				if strings.HasPrefix(k, "email_list:acc:"+accountID+":") ||
 					strings.HasPrefix(k, "email_list:acc:unified:") ||
@@ -146,7 +146,7 @@ func (h *Handler) InvalidateEmailCache(ctx context.Context, accountID string) {
 			}
 		} else {
 			// Empty accountID = clear all caches (bulk operations)
-			h.MemCache.Del("folders:unified", "accounts:list")
+			h.MemCache.Del("folders:unified", "accounts:list", "groups:list")
 			for _, k := range h.MemCache.Keys() {
 				if strings.HasPrefix(k, "email_list:acc:") || strings.HasPrefix(k, "folders:") {
 					h.MemCache.Del(k)
@@ -189,12 +189,12 @@ func (h *Handler) InvalidateEmailCacheByEmailID(ctx context.Context, emailID str
 
 func (h *Handler) HandleLicense(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"status":"free"})
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "free"})
 }
 
 func (h *Handler) HandleCheckUpdates(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"status":"ok"})
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok"})
 }
 
 func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {

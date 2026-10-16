@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -30,11 +31,10 @@ import (
 	"rmsmail/internal/sentry"
 	"rmsmail/internal/store"
 	"rmsmail/internal/sync"
-	"rmsmail/internal/telemetry"
 )
 
 // AppVersion holds the version string injected via ldflags at build time.
-var AppVersion string = "3.0.2"
+var AppVersion string = "3.1.9"
 
 type schemaStore interface {
 	InitSchema(ctx context.Context, schema string) error
@@ -81,7 +81,6 @@ func decryptTelegramToken(encrypted string) string {
 	return ""
 }
 
-
 func main() {
 	logLevel := slog.LevelInfo
 	if envLvl := os.Getenv("LOG_LEVEL"); envLvl == "info" {
@@ -99,6 +98,12 @@ func main() {
 
 	// Initialize edition
 	edition.Init()
+	if edition.IsMonoPro() {
+		if strings.TrimSpace(os.Getenv("ADMIN_EMAIL")) == "" {
+			slog.Error("FATAL: ADMIN_EMAIL is required for MonoPro (no implicit first-login admin)")
+			os.Exit(1)
+		}
+	}
 	slog.Info("running edition", "edition", edition.Current)
 	bgCtx := context.Background()
 
@@ -116,8 +121,45 @@ func main() {
 		dbURL = filepath.Join(wd, "data", "rms-mail-mono.db")
 		os.MkdirAll(filepath.Dir(dbURL), 0700)
 	} else if dbURL == "" {
-		slog.Error("configuration error", "detail", "DATABASE_URL environment variable is required")
-		os.Exit(1)
+		pgPass := os.Getenv("POSTGRES_PASSWORD")
+		if pgPass == "" {
+			pgPass = os.Getenv("PG_PASSWORD")
+		}
+		if pgPass != "" {
+			pgUser := os.Getenv("POSTGRES_USER")
+			if pgUser == "" {
+				pgUser = os.Getenv("PG_USER")
+				if pgUser == "" {
+					pgUser = "rmsmail"
+				}
+			}
+			pgDB := os.Getenv("POSTGRES_DB")
+			if pgDB == "" {
+				pgDB = os.Getenv("PG_DB")
+			}
+			if pgDB == "" {
+				if edition.IsMonoPro() {
+					pgDB = "geomail_mp"
+				} else {
+					pgDB = "rms-mail"
+				}
+			}
+			pgHost := os.Getenv("POSTGRES_HOST")
+			if pgHost == "" {
+				pgHost = "postgres:5432"
+			}
+			u := &url.URL{
+				Scheme:   "postgres",
+				User:     url.UserPassword(pgUser, pgPass),
+				Host:     pgHost,
+				Path:     "/" + pgDB,
+				RawQuery: "sslmode=prefer",
+			}
+			dbURL = u.String()
+		} else {
+			slog.Error("configuration error", "detail", "DATABASE_URL or POSTGRES_PASSWORD environment variable is required")
+			os.Exit(1)
+		}
 	}
 	// Read ENCRYPTION_KEYS (comma-separated), fall back to ENCRYPTION_KEY
 	encKeyRaw := os.Getenv("ENCRYPTION_KEYS")
@@ -223,13 +265,12 @@ func main() {
 	// Initialize License Manager
 	appVersion := AppVersion
 	if appVersion == "" {
-		appVersion = "3.0.2" // Fallback
+		appVersion = "3.1.9" // Fallback
 	}
-	telemetry.TrackInstallation(appVersion)
-	license.InitHK()
 	productID := edition.Current.ProductID()
-	pingMgr := license.NewManager(store, productID, appVersion)
-	pingMgr.StartBackgroundPinger(bgCtx)
+	license.InitHK()
+	licenseManager := license.NewManager(store, productID, appVersion)
+	licenseManager.StartBackgroundPinger(context.Background())
 
 	if len(os.Args) > 1 && os.Args[1] == "-gc" {
 		if err := gc.RunGarbageCollector(context.Background(), store, "storage"); err != nil {
@@ -338,26 +379,14 @@ func main() {
 	}
 	// Live lock checking — computed by LicenseMgr, not from DB flag
 	syncMgr.LockChecker = func(ctx context.Context, index int) bool { return false }
+	ctx, syncCancel := context.WithCancel(context.Background())
+	_ = ctx
+	_ = syncCancel
 	go syncMgr.Start(bgCtx)
 
 	var oauthManager *auth.OAuthManager
-	if !edition.IsMono() {
-		oauthManager = auth.NewOAuthManager(func(ctx context.Context, key string) (string, error) {
-			return store.GetSystemSetting(ctx, key)
-		})
-		syncMgr.OAuth = oauthManager
-	}
-
-	// Initialize JWT token blacklist (no-op when Redis is nil, e.g. Mono)
-
-	// Mono: webhook polling via SQLite trigger (no Redis dependency).
-	// If Redis is available (e.g. optional external Redis), use Redis poller.
-	if edition.IsMono() {
-	}
 
 	// Start job worker for DB-backed queues (auto_draft, etc.) — only if AI enabled
-	if !aiDisabled {
-	}
 
 	eventBus := api.NewEventBus()
 
@@ -439,7 +468,6 @@ func main() {
 		slog.Info("telegram bot initialized", "token", "empty", "status", "pending UI configuration")
 	}
 
-
 	syncMgr.SetEventBroadcast(func(ctx context.Context, channel, message string) {
 		// Extract accountID from message for cache invalidation.
 		// Skip "new-email" — OnNewEmail already invalidates cache before this fires.
@@ -510,6 +538,7 @@ func main() {
 
 			if allowed {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key, X-Token, X-Authorization")
@@ -565,14 +594,20 @@ func main() {
 
 	// Login rate limiter: 5 requests per 60s per IP (brute-force protection)
 	var loginLimiter func(http.Handler) http.Handler
-	if loginLimiter == nil { loginLimiter = func(next http.Handler) http.Handler { return next } }
+	if loginLimiter == nil {
+		loginLimiter = func(next http.Handler) http.Handler { return next }
+	}
 	loginHandler := loginLimiter(http.HandlerFunc(apiHandler.HandleLogin))
 	mux.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		loginHandler.ServeHTTP(w, r)
 	})
 
 	var aiRateLimit, searchRateLimit func(http.Handler) http.Handler
-	if aiRateLimit == nil { noopMw := func(next http.Handler) http.Handler { return next }; aiRateLimit = noopMw; searchRateLimit = noopMw }
+	if aiRateLimit == nil {
+		noopMw := func(next http.Handler) http.Handler { return next }
+		aiRateLimit = noopMw
+		searchRateLimit = noopMw
+	}
 	mux.HandleFunc("/api/auth/status", apiHandler.HandleAuthStatus)
 	mux.HandleFunc("/api/auth/edition", apiHandler.EditionInfo)
 	mux.HandleFunc("/api/auth/verify", apiHandler.HandleVerifyToken)
@@ -751,6 +786,8 @@ func main() {
 	mux.HandleFunc("/api/mcp/keys/toggle/", apiHandler.ToggleMCPKey)
 	mux.HandleFunc("/api/mcp/keys/view/", apiHandler.ViewMCPKey)
 	mux.HandleFunc("/api/mcp/connect", apiHandler.MCPConnectInfo)
+	mux.HandleFunc("/api/license", apiHandler.HandleLicense)
+	mux.HandleFunc("/api/license/check", apiHandler.HandleCheckUpdates)
 	if edition.IsMonoPro() || edition.IsTeams() {
 		mux.HandleFunc("/api/admin/settings", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet {
@@ -850,6 +887,17 @@ func main() {
 				slog.Error("panic", "area", "backfill_avatars", "error", r)
 			}
 		}()
+		backfillAvatars(store)
+	}()
+
+	// Background: auto-detect Gmail accounts by IMAP host (best-effort heuristic)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("panic", "area", "backfill_gmail", "error", r)
+			}
+		}()
+		backfillGmailAccounts(store)
 	}()
 
 	// Mono: periodic account discovery sync
@@ -897,6 +945,7 @@ func main() {
 
 	// 3. Stop all IMAP sync workers (with wait for goroutine drain)
 	syncMgr.StopAll()
+	syncCancel()
 
 	// 3. Close Redis connection
 
@@ -1202,4 +1251,30 @@ func (a *telegramAIAdapter) Chat(ctx context.Context, accountID string, messages
 		}
 		return provider.Chat(ctx, aiMsgs)
 	}
+}
+
+// backfillGmailAccounts marks existing accounts as Gmail if they use imap.gmail.com.
+// This covers both @gmail.com and Google Workspace (custom domain) accounts.
+// The authoritative check is CAPABILITY (X-GM-EXT-1) on next IMAP connect.
+func backfillGmailAccounts(store GmailAccountUpdater) {
+	ctx := context.Background()
+	accounts, err := store.GetAccounts(ctx)
+	if err != nil {
+		return
+	}
+	for _, acc := range accounts {
+		if acc.IsGmail || acc.IMAPHost == "" {
+			continue
+		}
+		if strings.Contains(acc.IMAPHost, "imap.gmail.com") {
+			if err := store.UpdateAccountIsGmail(ctx, acc.ID, true); err == nil {
+				slog.Info("backfill: marked account as Gmail", "email", acc.Email, "host", acc.IMAPHost)
+			}
+		}
+	}
+}
+
+type GmailAccountUpdater interface {
+	GetAccounts(ctx context.Context) ([]models.Account, error)
+	UpdateAccountIsGmail(ctx context.Context, accountID string, isGmail bool) error
 }

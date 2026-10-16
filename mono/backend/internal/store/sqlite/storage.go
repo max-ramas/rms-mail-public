@@ -522,19 +522,25 @@ func (s *Storage) CleanupGmailDuplicates(ctx context.Context, accountID string) 
 	var removed int
 	err := s.withWriteRetry(ctx, func(ctx context.Context) error {
 		tx, err := s.db.BeginTx(ctx, nil)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		defer tx.Rollback()
 
 		// Find duplicate groups: msg_ids that appear more than once for this account
 		rows, err := tx.QueryContext(ctx,
 			`SELECT msg_id FROM emails WHERE account_id = ? AND msg_id != '' GROUP BY msg_id HAVING COUNT(*) > 1`, accountID)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		defer rows.Close()
 
 		var dupMsgIDs []string
 		for rows.Next() {
 			var msgID string
-			if err := rows.Scan(&msgID); err != nil { return err }
+			if err := rows.Scan(&msgID); err != nil {
+				return err
+			}
 			dupMsgIDs = append(dupMsgIDs, msgID)
 		}
 		rows.Close()
@@ -543,24 +549,36 @@ func (s *Storage) CleanupGmailDuplicates(ctx context.Context, accountID string) 
 			// Find the best row to keep (one with most non-empty fields)
 			dupRows, err := tx.QueryContext(ctx,
 				`SELECT id, folder_id, uid, subject, snippet, body_path FROM emails WHERE msg_id = ? AND account_id = ?`, msgID, accountID)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			var (
-				bestID      string
-				bestScore   int
-				labels      []string
-				deleteIDs   []string
+				bestID    string
+				bestScore int
+				labels    []string
+				deleteIDs []string
 			)
 			for dupRows.Next() {
 				var id, folderID, subject, snippet, bodyPath string
 				var uid int32
-				if err := dupRows.Scan(&id, &folderID, &uid, &subject, &snippet, &bodyPath); err != nil { return err }
+				if err := dupRows.Scan(&id, &folderID, &uid, &subject, &snippet, &bodyPath); err != nil {
+					return err
+				}
 				score := 0
-				if bodyPath != "" { score += 3 }
-				if subject != "" { score += 2 }
-				if uid > 0 { score++ }
+				if bodyPath != "" {
+					score += 3
+				}
+				if subject != "" {
+					score += 2
+				}
+				if uid > 0 {
+					score++
+				}
 				if score > bestScore || bestID == "" {
-					if bestID != "" { deleteIDs = append(deleteIDs, bestID) }
+					if bestID != "" {
+						deleteIDs = append(deleteIDs, bestID)
+					}
 					bestID = id
 					bestScore = score
 				} else {
@@ -569,7 +587,9 @@ func (s *Storage) CleanupGmailDuplicates(ctx context.Context, accountID string) 
 			}
 			dupRows.Close()
 
-			if bestID == "" { continue }
+			if bestID == "" {
+				continue
+			}
 
 			// Collect all folder_ids as labels from ALL rows
 			folderRows, err := tx.QueryContext(ctx,

@@ -145,6 +145,13 @@ func (w *CheckWorker) checkNewEmails(ctx context.Context, c *imapclient.Client) 
 		}
 	}
 
+	// IDLE wake / periodic refresh: force INBOX expunge reconcile (UID SEARCH even when counts match).
+	if inboxFolderID != "" && !w.Account.IsGmail {
+		sw := NewSyncWorker(w.Account, w.Manager.Timing, nil, w.Manager)
+		fetcher := &Fetcher{Store: w.Store, OAuth: w.Manager.OAuth}
+		sw.reconcileFolderExpungesOpt(ctx, c, fetcher, "INBOX", inboxFolderID, 0, true)
+	}
+
 	var uidSet imap.UIDSet
 	if lastUID > 0 {
 		uidSet.AddRange(imap.UID(lastUID+1), imap.UID((1<<32)-1))

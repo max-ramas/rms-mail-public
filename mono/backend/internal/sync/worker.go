@@ -56,6 +56,65 @@ func (w *SyncWorker) deleteLocalEmailCopy(ctx context.Context, f *Fetcher, email
 	}
 	if err := f.Store.DeleteEmail(ctx, emailID, w.Account.ID); err != nil {
 		slog.Info("Failed to delete email for missing UID", "accountID", w.Account.Email, "emailID", emailID, "error", err)
+		return
+	}
+	if f.BroadcastEvent != nil {
+		payload, mErr := json.Marshal(map[string]any{
+			"email_id":   emailID,
+			"account_id": w.Account.ID,
+		})
+		if mErr == nil {
+			f.BroadcastEvent(ctx, "email_deleted", string(payload))
+		}
+	}
+}
+
+// reconcileFolderExpunges removes local emails whose UIDs no longer exist on the server.
+// Skipped for Gmail (label model — a missing UID in one mailbox is not always a hard delete).
+// force=true runs UID SEARCH even when local count is not ahead of the server (IDLE EXISTS/EXPUNGE).
+func (w *SyncWorker) reconcileFolderExpunges(ctx context.Context, c *imapclient.Client, f *Fetcher, folderPath, folderID string, serverCount uint32) {
+	w.reconcileFolderExpungesOpt(ctx, c, f, folderPath, folderID, serverCount, false)
+}
+
+func (w *SyncWorker) reconcileFolderExpungesOpt(ctx context.Context, c *imapclient.Client, f *Fetcher, folderPath, folderID string, serverCount uint32, force bool) {
+	if w.Account.IsGmail || folderID == "" || f.Store == nil {
+		return
+	}
+	local, err := f.Store.GetFolderEmailUIDMap(ctx, folderID)
+	if err != nil {
+		slog.Info("expunge reconcile: list local UIDs failed", "accountID", w.Account.Email, "folder", folderPath, "error", err)
+		return
+	}
+	if len(local) == 0 {
+		return
+	}
+	// Fast path: only skip when local is strictly behind the server (new mail pending, no local excess).
+	// Equal counts can still hide UID churn; force (IDLE) always SEARCH.
+	if !force && serverCount > 0 && len(local) < int(serverCount) {
+		return
+	}
+
+	searchData, err := c.UIDSearch(&imap.SearchCriteria{}, nil).Wait()
+	if err != nil {
+		slog.Info("expunge reconcile: UID SEARCH failed", "accountID", w.Account.Email, "folder", folderPath, "error", err)
+		return
+	}
+	onServer := make(map[uint32]struct{}, len(searchData.AllUIDs()))
+	for _, uid := range searchData.AllUIDs() {
+		onServer[uint32(uid)] = struct{}{}
+	}
+
+	purged := 0
+	for uid, emailID := range local {
+		if _, ok := onServer[uid]; ok {
+			continue
+		}
+		w.deleteLocalEmailCopy(ctx, f, emailID)
+		purged++
+	}
+	if purged > 0 {
+		slog.Info("expunge reconcile: purged local emails missing on server",
+			"accountID", w.Account.Email, "folder", folderPath, "count", purged)
 	}
 }
 
@@ -147,7 +206,7 @@ func (w *SyncWorker) sync(ctx context.Context, f *Fetcher) error {
 	serverAddr := fmt.Sprintf("%s:%d", w.Account.IMAPHost, w.Account.IMAPPort)
 
 	isOAuth := w.Account.OAuthAccessToken != ""
-	password := w.Account.PasswordEncrypted; _ = password
+	password := w.Account.PasswordEncrypted
 
 	slog.Info("Account info", "accountID", w.Account.Email, "oauth", isOAuth, "hasPassword", password != "", "host", fmt.Sprintf("%s:%d", w.Account.IMAPHost, w.Account.IMAPPort))
 
@@ -262,9 +321,14 @@ func (w *SyncWorker) detectGmail(ctx context.Context, c *imapclient.Client, f *F
 }
 
 func (w *SyncWorker) authenticate(ctx context.Context, c *imapclient.Client, f *Fetcher) error {
-	password := w.Account.PasswordEncrypted; _ = password
-
-	// Prefer XOAUTH2 if we have an access token
+	password := w.Account.PasswordEncrypted
+	if password != "" {
+		if err := c.Login(w.Account.Username, password).Wait(); err != nil {
+			return fmt.Errorf("login failed: %w", err)
+		}
+	} else {
+		return fmt.Errorf("no authentication credentials provided")
+	}
 	return nil
 }
 
@@ -774,6 +838,7 @@ func (w *SyncWorker) syncInboundFlags(ctx context.Context, c *imapclient.Client,
 			if !ok {
 				continue
 			}
+			delete(batch.idByUID, uid)
 			serverRead, serverFlagged, serverAnswered := imapFlagsState(flags)
 			// Gmail: flags are global — never downgrade local state from a potentially
 			// stale per-label FETCH. Use MAX(local, server) to prevent reversion.
@@ -796,6 +861,14 @@ func (w *SyncWorker) syncInboundFlags(ctx context.Context, c *imapclient.Client,
 		}
 		if err := cmd.Close(); err != nil {
 			slog.Info("inbound flag sync: fetch close", "accountID", w.Account.Email, "error", err)
+		}
+
+		// UIDs still in idByUID were not returned by FETCH → expunged on server.
+		if !w.Account.IsGmail {
+			for uid, ref := range batch.idByUID {
+				_ = uid
+				w.deleteLocalEmailCopy(ctx, f, ref.id)
+			}
 		}
 	}
 	return nil
@@ -993,30 +1066,66 @@ func (w *SyncWorker) syncFlagsGmail(ctx context.Context, c *imapclient.Client, d
 	const batchSize = 200
 	var readUIDs, unreadUIDs, flaggedUIDs, unflaggedUIDs, answeredUIDs, unansweredUIDs []uint32
 	for _, e := range dirty {
-		if e.UID == 0 { continue }
-		if e.IsRead { readUIDs = append(readUIDs, uint32(e.UID)) } else { unreadUIDs = append(unreadUIDs, uint32(e.UID)) }
-		if e.IsFlagged { flaggedUIDs = append(flaggedUIDs, uint32(e.UID)) } else { unflaggedUIDs = append(unflaggedUIDs, uint32(e.UID)) }
-		if e.IsAnswered { answeredUIDs = append(answeredUIDs, uint32(e.UID)) } else { unansweredUIDs = append(unansweredUIDs, uint32(e.UID)) }
+		if e.UID == 0 {
+			continue
+		}
+		if e.IsRead {
+			readUIDs = append(readUIDs, uint32(e.UID))
+		} else {
+			unreadUIDs = append(unreadUIDs, uint32(e.UID))
+		}
+		if e.IsFlagged {
+			flaggedUIDs = append(flaggedUIDs, uint32(e.UID))
+		} else {
+			unflaggedUIDs = append(unflaggedUIDs, uint32(e.UID))
+		}
+		if e.IsAnswered {
+			answeredUIDs = append(answeredUIDs, uint32(e.UID))
+		} else {
+			unansweredUIDs = append(unansweredUIDs, uint32(e.UID))
+		}
 	}
 	sendBatch := func(uids []uint32, flag imap.Flag, add bool) error {
 		for i := 0; i < len(uids); i += batchSize {
-			end := i + batchSize; if end > len(uids) { end = len(uids) }
+			end := i + batchSize
+			if end > len(uids) {
+				end = len(uids)
+			}
 			set := make(imap.UIDSet, 0, len(uids[i:end]))
-			for _, u := range uids[i:end] { set.AddNum(imap.UID(u)) }
-			op := imap.StoreFlagsAdd; if !add { op = imap.StoreFlagsDel }
+			for _, u := range uids[i:end] {
+				set.AddNum(imap.UID(u))
+			}
+			op := imap.StoreFlagsAdd
+			if !add {
+				op = imap.StoreFlagsDel
+			}
 			if _, err := c.Store(set, &imap.StoreFlags{Op: op, Flags: []imap.Flag{flag}}, nil).Collect(); err != nil {
 				return fmt.Errorf("Gmail STORE %s: %w", flag, err)
 			}
 		}
 		return nil
 	}
-	if err := sendBatch(readUIDs, imap.FlagSeen, true); err != nil { return err }
-	if err := sendBatch(unreadUIDs, imap.FlagSeen, false); err != nil { return err }
-	if err := sendBatch(flaggedUIDs, imap.FlagFlagged, true); err != nil { return err }
-	if err := sendBatch(unflaggedUIDs, imap.FlagFlagged, false); err != nil { return err }
-	if err := sendBatch(answeredUIDs, imap.FlagAnswered, true); err != nil { return err }
-	if err := sendBatch(unansweredUIDs, imap.FlagAnswered, false); err != nil { return err }
-	for _, e := range dirty { f.Store.ClearDirtyFlag(ctx, e.ID) }
+	if err := sendBatch(readUIDs, imap.FlagSeen, true); err != nil {
+		return err
+	}
+	if err := sendBatch(unreadUIDs, imap.FlagSeen, false); err != nil {
+		return err
+	}
+	if err := sendBatch(flaggedUIDs, imap.FlagFlagged, true); err != nil {
+		return err
+	}
+	if err := sendBatch(unflaggedUIDs, imap.FlagFlagged, false); err != nil {
+		return err
+	}
+	if err := sendBatch(answeredUIDs, imap.FlagAnswered, true); err != nil {
+		return err
+	}
+	if err := sendBatch(unansweredUIDs, imap.FlagAnswered, false); err != nil {
+		return err
+	}
+	for _, e := range dirty {
+		f.Store.ClearDirtyFlag(ctx, e.ID)
+	}
 	return nil
 }
 
@@ -1190,7 +1299,6 @@ func (w *SyncWorker) refreshToken(ctx context.Context, f *Fetcher) error {
 		slog.Info("refreshToken: account not found in DB, skipping reconnect", "accountID", w.Account.Email, "id", w.Account.ID)
 		return fmt.Errorf("account not found in DB during token refresh")
 	}
-
 
 	slog.Info("Refreshing OAuth token", "accountID", acc.Email, "refreshTokenLen", len(acc.OAuthRefreshToken))
 

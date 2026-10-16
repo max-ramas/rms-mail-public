@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,20 +14,80 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// extractClientIP returns the real client IP, respecting reverse proxy headers.
-// Priority: X-Forwarded-For (leftmost IP) → X-Real-IP → RemoteAddr.
-func extractClientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		if idx := strings.IndexByte(fwd, ','); idx > 0 {
-			return strings.TrimSpace(fwd[:idx])
+var trustedProxyNets []*net.IPNet
+
+func init() {
+	reloadTrustedProxies()
+}
+
+// reloadTrustedProxies parses TRUSTED_PROXIES (comma-separated IPs/CIDRs).
+// Empty means proxy headers are ignored (use RemoteAddr only).
+func reloadTrustedProxies() {
+	raw := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES"))
+	if raw == "" {
+		trustedProxyNets = nil
+		return
+	}
+	var nets []*net.IPNet
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
 		}
-		return strings.TrimSpace(fwd)
+		if !strings.Contains(part, "/") {
+			if ip := net.ParseIP(part); ip != nil {
+				if ip.To4() != nil {
+					part += "/32"
+				} else {
+					part += "/128"
+				}
+			}
+		}
+		_, n, err := net.ParseCIDR(part)
+		if err != nil {
+			slog.Warn("TRUSTED_PROXIES: skipping invalid entry", "entry", part, "error", err)
+			continue
+		}
+		nets = append(nets, n)
 	}
-	if ip := r.Header.Get("X-Real-IP"); ip != "" {
-		return ip
+	trustedProxyNets = nets
+}
+
+func isTrustedProxy(remoteIP string) bool {
+	if len(trustedProxyNets) == 0 {
+		return false
 	}
-	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return ip
+	ip := net.ParseIP(remoteIP)
+	if ip == nil {
+		return false
+	}
+	for _, n := range trustedProxyNets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// extractClientIP returns the real client IP.
+// X-Forwarded-For / X-Real-IP are honored only when RemoteAddr is in TRUSTED_PROXIES.
+func extractClientIP(r *http.Request) string {
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		remoteIP = r.RemoteAddr
+	}
+	if isTrustedProxy(remoteIP) {
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			if idx := strings.IndexByte(fwd, ','); idx > 0 {
+				return strings.TrimSpace(fwd[:idx])
+			}
+			return strings.TrimSpace(fwd)
+		}
+		if ip := r.Header.Get("X-Real-IP"); ip != "" {
+			return strings.TrimSpace(ip)
+		}
+	}
+	return remoteIP
 }
 
 var rateLimitScript = redis.NewScript(`

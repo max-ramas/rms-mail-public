@@ -88,7 +88,6 @@ func (h *Handler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	req.InReplyTo = stripCRLF(req.InReplyTo)
 	req.References = stripCRLF(req.References)
 
-
 	if account.SMTPHost == "" || account.SMTPPort == 0 {
 		WriteJSONError(w, http.StatusBadRequest, "SMTP not configured for this account")
 		return
@@ -183,7 +182,6 @@ func (h *Handler) SendEmail(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CancelSend(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	jobID := pathParts[len(pathParts)-1]
-
 
 	// Verify job ownership before canceling
 	accountID, _, err := h.Store.GetScheduledEmail(r.Context(), jobID)

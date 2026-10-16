@@ -798,7 +798,6 @@ func (h *Handler) RefreshAccountToken(ctx context.Context, accountID string) (*m
 		return nil, err
 	}
 
-
 	slog.Info("Refreshing OAuth token for account", "email", acc.Email, "provider", acc.Provider)
 
 	var newAccessToken, newRefreshToken string

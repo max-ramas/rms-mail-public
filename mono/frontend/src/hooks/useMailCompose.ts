@@ -19,6 +19,7 @@ export interface ComposeAttachment {
   id: string;
   filename: string;
   size: number;
+  hash?: string;
 }
 
 export interface ForwardMeta {
@@ -157,6 +158,7 @@ export function useMailCompose({
       setAttachments(
         (emailBody?.attachments ?? []).map((a) => ({
           id: a.hash,
+          hash: a.hash,
           filename: a.filename,
           size: a.size,
         })),
@@ -394,7 +396,7 @@ export function useMailCompose({
                 ? `${replyTo.in_reply_to} ${replyTo.msg_id}`
                 : replyTo.msg_id
               : undefined,
-          attachment_hashes: attachments.map((a) => a.id),
+          attachment_hashes: attachments.map((a) => a.hash || a.id),
           draft_id: draftId ?? undefined,
         });
 

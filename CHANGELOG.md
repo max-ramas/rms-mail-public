@@ -1,11 +1,20 @@
 # Changelog
 
+## [3.1.9] — 2026-10-15
+
+### Added
+- **Remember Me**: Added a "Remember me" option to the login screen with a 30-day session extension and persistent authentication cookies.
+
+### Fixed
+- **Unread Counters**: Fixed background counter drift where snoozed emails were counted as unread. `RefreshUnreadCounts` now excludes snoozed emails (`snooze_until <= NOW()`), matching the email list view.
+- **Email List Stability (SSE)**: Eliminated email list flickering during background sync and SSE updates (such as `folder_updated`). Replaced destructive query resets with seamless cache page slicing and background invalidation (`keepPreviousData`).
+- **Gmail Folder Hierarchy & Sorting**: Fixed chaotic alphabetical folder sorting in the sidebar. Standard folders (`Inbox`, `Sent`, `Drafts`, `Important`, `Starred`, `All Mail`, `Trash`, `Spam`) across localized folder names and `[Gmail]/` prefixes are now properly structured and prioritized before custom labels.
+
 ## [3.1.8] — 2026-07-27
 
 ### Fixed
 - **Attachment Uploads (CAS)**: Fixed an issue where the frontend sent attachment UUIDs instead of CAS hashes during email composition (`useMailCompose`), causing attachments to be silently dropped by the backend's `GetAttachmentByHash`.
 - **Security**: Upgraded `golang.org/x/text` from `v0.38.0` to `v0.39.0` to fix the `GO-2026-5970` infinite loop vulnerability.
-- **RMS Memory**: Added `rules/attachments.md` to document the CAS hash requirement for backend attachments.
 
 ## [3.1.7] — 2026-07-23
 

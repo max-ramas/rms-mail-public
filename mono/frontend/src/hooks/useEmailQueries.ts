@@ -39,7 +39,7 @@ function countUniqueEmails(
   return count;
 }
 
-const MAIL_STATUS_POLL_MS = 30_000;
+const MAIL_STATUS_POLL_MS = 60_000;
 
 function syncWarmupRefetchInterval(
   data: InfiniteData<EmailListPage> | undefined,
@@ -54,9 +54,10 @@ function listRefetchInterval(
   data: InfiniteData<EmailListPage> | undefined,
   warmupExpired: boolean,
 ): number | false {
+  // After sync warmup, rely on SSE + useMailPeriodicRefresh (avoid triple 30s storms).
   const fast = syncWarmupRefetchInterval(data, warmupExpired);
   if (fast !== false) return fast;
-  return MAIL_STATUS_POLL_MS;
+  return false;
 }
 
 function clientEdition(): string {

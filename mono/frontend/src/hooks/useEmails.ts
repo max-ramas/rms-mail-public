@@ -88,8 +88,8 @@ axios.interceptors.response.use(
   },
 );
 
-const MAIL_LIST_REFRESH_MS = 400;
-const MAIL_POLL_INTERVAL_MS = 30_000;
+const MAIL_LIST_REFRESH_MS = 800;
+const MAIL_POLL_INTERVAL_MS = 60_000;
 
 function refetchMailLists(queryClient: QueryClient) {
   return Promise.all([
@@ -111,10 +111,17 @@ async function refreshMailInbox(
   opts?: { resetPages?: boolean },
 ) {
   if (opts?.resetPages) {
-    await queryClient.resetQueries({ queryKey: ["emails-infinite"] });
-  } else {
-    await queryClient.invalidateQueries({ queryKey: ["emails-infinite"] });
+    queryClient.setQueriesData({ queryKey: ["emails-infinite"] }, /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    (oldData: any) => {
+      if (!oldData || !oldData.pages) return oldData;
+      return {
+        ...oldData,
+        pages: oldData.pages.slice(0, 1),
+        pageParams: oldData.pageParams.slice(0, 1),
+      };
+    });
   }
+  await queryClient.invalidateQueries({ queryKey: ["emails-infinite"] });
   await refetchMailLists(queryClient);
 }
 
@@ -307,6 +314,20 @@ export function useNewEmailEvent(enabled = true) {
           break;
         }
 
+        case "email_deleted": {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.email_id) {
+              queryClient.removeQueries({ queryKey: ["email", data.email_id] });
+            }
+          } catch (err) {
+            if (process.env.NODE_ENV === "development")
+              console.error("Failed to parse email_deleted event", err);
+          }
+          scheduleListRefresh();
+          break;
+        }
+
         case "emails_bulk_updated": {
           let action = "";
           try {
@@ -346,6 +367,7 @@ export function useNewEmailEvent(enabled = true) {
     events: [
       "new-email",
       "email_updated",
+      "email_deleted",
       "emails_bulk_updated",
       "folder_updated",
       "draft_ready",

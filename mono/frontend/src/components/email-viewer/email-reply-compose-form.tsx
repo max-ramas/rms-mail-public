@@ -28,6 +28,7 @@ interface EmailReplyComposeFormProps {
     id: string;
     filename: string;
     size: number;
+    hash?: string;
   }>;
   accounts: Account[];
   activeAccount: string;

@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "3.1.2",
+  "version": "3.1.9",
   "engines": {
     "node": ">=26.0.0"
   },

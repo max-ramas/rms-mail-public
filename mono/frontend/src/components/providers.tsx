@@ -56,6 +56,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ChunkLoadRecovery />
         <ToastProvider>
+          {children}
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -627,7 +627,7 @@ export function AccountsTab({
             <div className="flex gap-2 items-center flex-wrap">
               <Button
                 size="sm"
-                onClick={!editingId && limitReached ? openUpsell : handleSave}
+                onClick={!editingId && limitReached ? (() => {}) : handleSave}
                 className={!editingId && limitReached ? "opacity-50" : ""}
               >
                 <Plus className="w-3 h-3 me-1" />{" "}

@@ -1091,16 +1091,9 @@ func (f *Fetcher) handleSendNotification(ctx context.Context, accountID string, 
 }
 
 func (f *Fetcher) handleAutoDraft(ctx context.Context, accountID, emailID string, rule models.FilterRule) {
-	if f.AI == nil { return }
-	_ = f.Store.SaveDraftReply(ctx, emailID, accountID, "[AI draft pending]")
-	_ = f.Store.EnqueueJob(ctx, "auto_draft", "{}", time.Now())
-	if f.JobNotify != nil { select { case f.JobNotify <- struct{}{}: default: } }
 }
 
 func (f *Fetcher) handleForward(ctx context.Context, accountID, emailID string, rule models.FilterRule) {
-	if rule.ActionValue == "" { return }
-	_ = f.Store.EnqueueJob(ctx, "forward_email", "{}", time.Now())
-	if f.JobNotify != nil { select { case f.JobNotify <- struct{}{}: default: } }
 }
 
 // generateAIDraft collects thread context and calls the AI gateway to generate a draft reply.

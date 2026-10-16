@@ -2,7 +2,10 @@ package sqlite
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -169,39 +172,38 @@ func (s *Storage) GetMCPKeyFull(ctx context.Context, id string) (string, error) 
 	return s.decryptPassword(encKey, "mcp_key")
 }
 
-// GetMCPKeyByAPIKey finds the active MCP key record (with accountID) by matching the raw API key.
+// GetMCPKeyByAPIKey finds the active MCP key by SHA-256(key_hash).
+// Encrypted full keys remain in DB for UI "view key"; auth never decrypts them.
 
 func (s *Storage) GetMCPKeyByAPIKey(ctx context.Context, apiKey string) (*models.MCPKey, error) {
 	if len(apiKey) < 8 {
 		return nil, nil
 	}
-	prefix := apiKey[:8]
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, name, COALESCE(account_id,''), key_prefix, key_encrypted, is_active,
+	sum := sha256.Sum256([]byte(apiKey))
+	wantHash := hex.EncodeToString(sum[:])
+	var k models.MCPKey
+	var gotHash string
+	var lastUsedAt, createdAt sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id, name, COALESCE(account_id,''), key_prefix, key_hash, is_active,
 		        COALESCE(last_used_at,''), created_at
-		 FROM mcp_keys WHERE key_prefix = ? AND is_active = 1`, prefix)
+		 FROM mcp_keys WHERE key_hash = ? AND is_active = 1`, wantHash,
+	).Scan(&k.ID, &k.Name, &k.AccountID, &k.KeyPrefix, &gotHash, &k.IsActive, &lastUsedAt, &createdAt)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var k models.MCPKey
-		var encKey string
-		var lastUsedAt, createdAt sql.NullString
-		if err := rows.Scan(&k.ID, &k.Name, &k.AccountID, &k.KeyPrefix, &encKey, &k.IsActive, &lastUsedAt, &createdAt); err != nil {
-			continue
-		}
-		if lastUsedAt.Valid && lastUsedAt.String != "" {
-			t := parseTime(lastUsedAt)
-			k.LastUsedAt = &t
-		}
-		k.CreatedAt = parseTime(createdAt)
-		fullKey, err := s.decryptPassword(encKey, "mcp_key")
-		if err == nil && fullKey == apiKey {
-			return &k, nil
-		}
+	if lastUsedAt.Valid && lastUsedAt.String != "" {
+		t := parseTime(lastUsedAt)
+		k.LastUsedAt = &t
 	}
-	return nil, rows.Err()
+	k.CreatedAt = parseTime(createdAt)
+	if subtle.ConstantTimeCompare([]byte(gotHash), []byte(wantHash)) != 1 {
+		return nil, nil
+	}
+	return &k, nil
 }
 
 // ============================================================================

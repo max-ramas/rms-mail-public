@@ -16,7 +16,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-
 )
 
 type contextKey struct{ name string }
@@ -72,25 +71,33 @@ func InitJWTAuth() {
 }
 
 // GenerateToken creates a signed JWT for the given userID.
-func GenerateToken(userID string) (string, error) {
+func GenerateToken(userID string, rememberMe bool) (string, error) {
+	exp := time.Now().Add(24 * time.Hour)
+	if rememberMe {
+		exp = time.Now().Add(30 * 24 * time.Hour)
+	}
 	claims := jwt.MapClaims{
 		"jti": uuid.New().String(),
 		"sub": userID,
 		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
+		"exp": exp.Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
 }
 
 // GenerateTokenWithAdmin creates a signed JWT with an is_admin claim.
-func GenerateTokenWithAdmin(userID string, isAdmin bool) (string, error) {
+func GenerateTokenWithAdmin(userID string, isAdmin bool, rememberMe bool) (string, error) {
+	exp := time.Now().Add(24 * time.Hour)
+	if rememberMe {
+		exp = time.Now().Add(30 * 24 * time.Hour)
+	}
 	claims := jwt.MapClaims{
 		"jti":      uuid.New().String(),
 		"sub":      userID,
 		"is_admin": isAdmin,
 		"iat":      time.Now().Unix(),
-		"exp":      time.Now().Add(24 * time.Hour).Unix(),
+		"exp":      exp.Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
@@ -273,11 +280,17 @@ func RevokeCurrentToken(ctx context.Context) error {
 }
 
 // SetTokenCookie writes an httpOnly Secure SameSite=Lax cookie with the JWT.
-func SetTokenCookie(w http.ResponseWriter, r *http.Request, token string) {
+func SetTokenCookie(w http.ResponseWriter, r *http.Request, token string, rememberMe bool) {
 	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 	if os.Getenv("APP_ENV") == "development" {
 		secure = false
 	}
+
+	maxAge := 86400 // 24 hours
+	if rememberMe {
+		maxAge = 30 * 86400 // 30 days
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "rms_token",
 		Value:    token,
@@ -285,7 +298,7 @@ func SetTokenCookie(w http.ResponseWriter, r *http.Request, token string) {
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
-		MaxAge:   86400, // 24 hours
+		MaxAge:   maxAge,
 	})
 }
 

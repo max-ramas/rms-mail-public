@@ -26,6 +26,16 @@
 
 ---
 
+> ### 🔒 Privacy promise
+> RMS does **not** collect your data or usage statistics. Your emails, contacts, passwords and
+> attachments stay on your own server, and there is no analytics of any kind. We receive only the
+> fact of an installation (an anonymous ID and the version) and whether it has a license.
+> Features you switch on yourself (an AI provider with your own key, optional error reporting to
+> your own Sentry) send only what you chose, and a few small conveniences (avatars, fonts, external
+> IP detection)\* are used for your comfort. Want full privacy for AI? Set `OLLAMA_URL` to a local
+> Ollama and your messages never leave your server for a model. If an online service is ever
+> introduced, we will tell you clearly beforehand.
+
 <div align="center">
   <a href="https://ko-fi.com/M7I020HKXX" target="_blank" rel="noopener noreferrer">
     <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="ko-fi">
@@ -825,3 +835,7 @@ Our customers can request source code access under NDA for security review, comp
 <div align="center">
 <sub>Built by <a href="https://ramzaeff.com">Maksim Ramzaev</a> · <a href="https://rms-ds.com">RMS Digital Services</a></sub>
 </div>
+
+---
+
+<sub>\* Gravatar (sender avatars), Google Fonts (fonts) and api.ipify.org (detecting the external IP during setup) are used for your convenience; RMS takes no part in that data exchange. If you set a Sentry DSN, errors go to your own Sentry instance, not to us.</sub>

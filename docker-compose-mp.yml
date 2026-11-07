@@ -115,7 +115,7 @@ services:
           "curl",
           "--fail",
           "--silent",
-          "http://localhost:${PORT:-8080}/api/health",
+          "http://localhost:8080/api/health",
         ]
       interval: 15s
       timeout: 5s

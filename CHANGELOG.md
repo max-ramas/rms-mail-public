@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.1.11] — 2026-11-08
+
+Maintenance release.
+
+### Fixed
+- **Docker healthcheck (Mono Pro, Unified)**: the container healthcheck now probes the fixed internal port 8080, so a custom host `PORT` no longer makes a healthy container report `unhealthy`.
+- **License ping, free edition**: a `free` answer without a payload is treated as a normal result; Mono no longer logs "ping failed, will retry".
+
 ## [3.1.10] — 2026-10-16
 
 Audit remediation (v3.1.9 findings). Phases P0–P5; HTML EML confirmation buttons and dual IMAP session merge remain **planned** (external `.eml` samples / load-test).

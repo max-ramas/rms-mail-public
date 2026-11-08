@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.12] — 2026-11-08
+
+Hotfix.
+
+### Fixed
+- **UI flicker / "Error" on the message list**: the global API limit introduced in 3.1.10 (60 requests/min per IP) was lower than what the web UI legitimately sends, so the UI got HTTP 429 and kept retrying. The default is now 600/min per IP and can be changed with `GLOBAL_RATE_LIMIT_PER_MIN`.
+
 ## [3.1.11] — 2026-11-08
 
 Maintenance release.

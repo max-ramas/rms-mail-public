@@ -47,7 +47,8 @@
       "hide_translation": "Piilota käännös",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Takaisin"
+      "back": "Takaisin",
+      "more": "Lisää toimintoja"
     },
     "pin_tooltip": "Kiinnitä / Irrota — kiinnitetyt sähköpostit pysyvät ylhäällä",
     "forward_begin": "Välitetyn viestin alku",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Kaikki luokat",
-    "replied": "Vastattu"
+    "replied": "Vastattu",
+    "notifications": {
+      "new_email_title": "Uusi sähköposti lähettäjältä: {sender}",
+      "new_message": "Uusi viesti",
+      "multiple_title": "Sinulla on {count} uutta sähköpostia",
+      "multiple_body": "Napsauta nähdäksesi saapuneet"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

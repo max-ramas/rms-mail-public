@@ -49,6 +49,7 @@
     "move_prompt": "Presunúť do priečinka:",
     "toast_moved_success": "Presunuté",
     "cat_actions": "Akcie",
-    "mail_print": "Vytlačiť e-mail"
+    "mail_print": "Vytlačiť e-mail",
+    "navigation_command_palette": "Otvoriť paletu príkazov"
   }
 }

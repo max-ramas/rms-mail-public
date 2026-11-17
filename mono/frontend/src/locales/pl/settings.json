@@ -459,6 +459,7 @@
     "admin_users": "Użytkownicy",
     "admin_users_desc": "Zarządzaj zarejestrowanymi kontami użytkowników.",
     "loading_users": "Ładowanie użytkowników...",
-    "error_loading_users": "Nie udało się załadować użytkowników."
+    "error_loading_users": "Nie udało się załadować użytkowników.",
+    "mcp_last_used": "Ostatnio użyto {date}"
   }
 }

@@ -49,6 +49,7 @@
     "move_prompt": "Μετακίνηση στο φάκελο:",
     "toast_moved_success": "Μετακινήθηκε",
     "cat_actions": "Ενέργειες",
-    "mail_print": "Εκτύπωση email"
+    "mail_print": "Εκτύπωση email",
+    "navigation_command_palette": "Άνοιγμα παλέτας εντολών"
   }
 }

@@ -47,7 +47,8 @@
       "hide_translation": "ترجمہ چھپائیں",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "واپس"
+      "back": "واپس",
+      "more": "مزید اقدامات"
     },
     "pin_tooltip": "پن / پن ہٹائیں — پن کردہ ای میلز فہرست میں سب سے اوپر رہتی ہیں",
     "forward_begin": "آگے بھیجے گئے پیغام کا آغاز",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM پاس",
     "dkim_na": "DKIM N/A",
     "all_categories": "تمام زمرے",
-    "replied": "جواب"
+    "replied": "جواب",
+    "notifications": {
+      "new_email_title": "نئی ای میل از: {sender}",
+      "new_message": "نیا پیغام",
+      "multiple_title": "آپ کی {count} نئی ای میلز ہیں",
+      "multiple_body": "ان باکس دیکھنے کے لیے کلک کریں"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

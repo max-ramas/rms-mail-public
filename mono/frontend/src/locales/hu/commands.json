@@ -49,6 +49,7 @@
     "move_prompt": "Áthelyezés mappába:",
     "toast_moved_success": "Elköltözött",
     "cat_actions": "Műveletek",
-    "mail_print": "E-mail nyomtatása"
+    "mail_print": "E-mail nyomtatása",
+    "navigation_command_palette": "Parancspaletta megnyitása"
   }
 }

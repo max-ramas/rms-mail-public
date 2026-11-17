@@ -47,7 +47,8 @@
       "hide_translation": "Скрий превода",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Назад"
+      "back": "Назад",
+      "more": "Още действия"
     },
     "pin_tooltip": "Закачи / Откачи — закачените имейли остават отгоре",
     "forward_begin": "Начало на препратено съобщение",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Всички категории",
-    "replied": "Отговореноmsg status"
+    "replied": "Отговореноmsg status",
+    "notifications": {
+      "new_email_title": "Нов имейл от: {sender}",
+      "new_message": "Ново съобщение",
+      "multiple_title": "Имате {count} нови имейла",
+      "multiple_body": "Щракнете, за да видите входящата поща"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

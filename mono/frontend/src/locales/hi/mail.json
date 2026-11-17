@@ -47,7 +47,8 @@
       "hide_translation": "अनुवाद छिपाएं",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "वापस"
+      "back": "वापस",
+      "more": "अधिक विकल्प"
     },
     "pin_tooltip": "पिन / अनपिन — पिन किए गए ईमेल सबसे ऊपर रहते हैं",
     "forward_begin": "अग्रेषित संदेश प्रारंभ",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "सभी श्रेणियाँ",
-    "replied": "जवाब प्रेषित"
+    "replied": "जवाब प्रेषित",
+    "notifications": {
+      "new_email_title": "नया ईमेल: {sender}",
+      "new_message": "नया संदेश",
+      "multiple_title": "आपके पास {count} नए ईमेल हैं",
+      "multiple_body": "इनबॉक्स देखने के लिए क्लिक करें"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

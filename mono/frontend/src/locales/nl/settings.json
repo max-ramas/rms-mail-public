@@ -459,6 +459,7 @@
     "admin_users": "Gebruikers",
     "admin_users_desc": "Beheer geregistreerde gebruikersaccounts.",
     "loading_users": "Gebruikers ophalen...",
-    "error_loading_users": "Kan gebruikers niet laden."
+    "error_loading_users": "Kan gebruikers niet laden.",
+    "mcp_last_used": "Laatst gebruikt {date}"
   }
 }

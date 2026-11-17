@@ -459,6 +459,7 @@
     "admin_users": "Utilizatori",
     "admin_users_desc": "Gestionați conturile de utilizator înregistrate.",
     "loading_users": "Se încarcă utilizatorii...",
-    "error_loading_users": "Încărcarea utilizatorilor a eșuat."
+    "error_loading_users": "Încărcarea utilizatorilor a eșuat.",
+    "mcp_last_used": "Ultima utilizare {date}"
   }
 }

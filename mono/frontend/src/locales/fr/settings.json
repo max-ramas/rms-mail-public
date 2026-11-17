@@ -459,7 +459,8 @@
     "admin_users": "Utilisateurs",
     "admin_users_desc": "Gérer les comptes d'utilisateurs enregistrés.",
     "loading_users": "Chargement d'utilisateurs…",
-    "error_loading_users": "Échec du chargement des utilisateurs."
+    "error_loading_users": "Échec du chargement des utilisateurs.",
+    "mcp_last_used": "Dernière utilisation {date}"
   },
   "resume_sync": "Reprendre la synchronisation",
   "resume_sync_done": "Synchronisation reprise — le compte se reconnectera sous peu"

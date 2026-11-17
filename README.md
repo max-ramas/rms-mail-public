@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/redis-FF4438?style=for-the-badge&logo=redis&logoColor=white" alt="Redis">
   <img src="https://img.shields.io/badge/docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/self--hosted-privacy--first-6366f1?style=for-the-badge" alt="Privacy First">
-  <img src="https://img.shields.io/badge/45_languages-i18n-6366f1?style=for-the-badge" alt="45 Languages">
+  <img src="https://img.shields.io/badge/46_languages-i18n-6366f1?style=for-the-badge" alt="46 Languages">
   <img src="https://img.shields.io/badge/license-AGPLv3-blue?style=for-the-badge" alt="AGPLv3">
 </p>
 
@@ -39,9 +39,9 @@
 RMS Mail is actively developed and used in production environments.
 
 Current status:
-- Mono edition: Stable (v3.1.10)
-- Unified edition: Stable (v3.1.10)
-- Mono Pro edition: Stable (v3.1.10)
+- Mono edition: Stable (v3.1.13)
+- Unified edition: Stable (v3.1.13)
+- Mono Pro edition: Stable (v3.1.13)
 - Teams edition: Planned
 
 Current development priorities:
@@ -83,7 +83,7 @@ Other editions (Unified, Mono Pro, Teams) are distributed as prebuilt Docker ima
 8. [🏗️ Architecture & Tech Stack](#️-architecture--tech-stack)
 9. [⚡ Native Database FTS & Performance Pipeline](#-native-database-fts--performance-pipeline)
 10. [📧 Gmail-Style Email Processing](#-gmail-style-email-processing)
-11. [🌍 Internationalization (45 Languages)](#-internationalization-45-languages)
+11. [🌍 Internationalization (46 Languages)](#-internationalization-46-languages)
 12. [🚀 Quick Start](#-quick-start)
 13. [🔒 Production (HTTPS / Reverse Proxy)](#-production-https--reverse-proxy)
 14. [📊 Feature Matrix](#-feature-matrix)
@@ -300,7 +300,7 @@ Designed for people who want modern email without operating enterprise infrastru
 * pin / snooze / mute
 * private per-email notes
 * SPF/DKIM verification & anti-spoofing checks
-* 45 languages
+* 46 languages
 
 ---
 
@@ -387,7 +387,7 @@ Extends **Unified** (multi-account workspace **and** PostgreSQL + Redis + async 
 ┌──────────────────────────────────────────────────────────┐
 │                  Frontend (Next.js 16)                   │
 │   React 19 · TipTap · TanStack Virtual                    │
-│   45 languages (next-intl) · Tailwind CSS · shadcn/ui    │
+│   46 languages (next-intl) · Tailwind CSS · shadcn/ui    │
 └────────────────────────┬─────────────────────────────────┘
                          │ REST + SSE
 ┌────────────────────────▼─────────────────────────────────┐
@@ -491,9 +491,9 @@ Raw MIME ──▶ enmime parser ──▶ HTML normalization ──▶ iframe C
 
 ---
 
-## 🌍 Internationalization (45 Languages)
+## 🌍 Internationalization (46 Languages)
 
-RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live language switching, localized dates, and full UI localization.
+RMS Mail supports 46 languages out of the box. Includes LTR/RTL support, live language switching, localized dates, and full UI localization.
 
 **Supported regions:** Europe, Middle East, East Asia, South Asia, Central Asia, Caucasus, Southeast Asia.
 
@@ -504,16 +504,17 @@ RMS Mail supports 45 languages out of the box. Includes LTR/RTL support, live la
 | `he` | 🇮🇱 עברית | `hi` | 🇮🇳 हिन्दी | `bn` | 🇧🇩 Bengali |
 | `ur` | 🇵🇰 اردو | `fa` | 🇮🇷 فارسی | `tr` | 🇹🇷 Türkçe |
 | `de` | 🇩🇪 Deutsch | `fr` | 🇫🇷 Français | `es` | 🇪🇸 Español |
-| `it` | 🇮🇹 Italiano | `nl` | 🇳🇱 Nederlands | `pl` | 🇵🇱 Polski |
-| `cs` | 🇨🇿 Čeština | `sk` | 🇸🇰 Slovenčina | `hu` | 🇭🇺 Magyar |
-| `ro` | 🇷🇴 Română | `bg` | 🇧🇬 Български | `el` | 🇬🇷 Ελληνικά |
-| `sr` | 🇷🇸 Српски | `hr` | 🇭🇷 Hrvatski | `sl` | 🇸🇮 Slovenščina |
-| `sv` | 🇸🇪 Svenska | `da` | 🇩🇰 Dansk | `nb` | 🇳🇴 Norsk |
-| `fi` | 🇫🇮 Suomi | `et` | 🇪🇪 Eesti | `lv` | 🇱🇻 Latviešu |
-| `lt` | 🇱🇹 Lietuvių | `uk` | 🇺🇦 Українська | `kk` | 🇰🇿 Қазақша |
-| `ka` | 🇬🇪 ქართული | `hy` | 🇦🇲 Հայերեն | `az` | 🇦🇿 Azərbaycanca |
-| `uz` | 🇺🇿 Oʻzbekcha | `vi` | 🇻🇳 Tiếng Việt | `th` | 🇹🇭 ไทย |
-| `id` | 🇮🇩 Indonesia | `ms` | 🇲🇾 Melayu | `ca` | 🇪🇸 Català |
+| `pt` | 🇵🇹 Português | `it` | 🇮🇹 Italiano | `nl` | 🇳🇱 Nederlands |
+| `pl` | 🇵🇱 Polski | `cs` | 🇨🇿 Čeština | `sk` | 🇸🇰 Slovenčina |
+| `hu` | 🇭🇺 Magyar | `ro` | 🇷🇴 Română | `bg` | 🇧🇬 Български |
+| `el` | 🇬🇷 Ελληνικά | `sr` | 🇷🇸 Српски | `hr` | 🇭🇷 Hrvatski |
+| `sl` | 🇸🇮 Slovenščina | `sv` | 🇸🇪 Svenska | `da` | 🇩🇰 Dansk |
+| `nb` | 🇳🇴 Norsk | `fi` | 🇫🇮 Suomi | `et` | 🇪🇪 Eesti |
+| `lv` | 🇱🇻 Latviešu | `lt` | 🇱🇹 Lietuvių | `uk` | 🇺🇦 Українська |
+| `kk` | 🇰🇿 Қазақша | `ka` | 🇬🇪 ქართული | `hy` | 🇦🇲 Հայերեն |
+| `az` | 🇦🇿 Azərbaycanca | `uz` | 🇺🇿 Oʻzbekcha | `vi` | 🇻🇳 Tiếng Việt |
+| `th` | 🇹🇭 ไทย | `id` | 🇮🇩 Indonesia | `ms` | 🇲🇾 Melayu |
+| `ca` | 🇪🇸 Català | | | | |
 
 ---
 
@@ -680,7 +681,7 @@ proxy_read_timeout 86400s;
 | IMAP Folder CRUD (UI) | ✅ | ✅ | ✅ | ✅ |
 | Labels, Rules Architecture | ✅ | ✅ | ✅ | ✅ |
 | Rich HTML TipTap Composer | ✅ | ✅ | ✅ | ✅ |
-| 45 Languages (i18n) | ✅ | ✅ | ✅ | ✅ |
+| 46 Languages (i18n) | ✅ | ✅ | ✅ | ✅ |
 | Thread Chains (Toggleable) | ✅ | ✅ | ✅ | ✅ |
 | Configurable Send Delay | ✅ | ✅ (Redis) | ✅ (Redis) | ✅ (Redis) |
 | Browser & TG Notifications | ✅ | ✅ | ✅ | ✅ |

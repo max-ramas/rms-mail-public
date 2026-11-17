@@ -47,7 +47,8 @@
       "hide_translation": "Аударманы жасыру",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Артқа"
+      "back": "Артқа",
+      "more": "Қосымша әрекеттер"
     },
     "pin_tooltip": "Бекіту / Алу — бекітілген хаттар жоғарыда қалады",
     "forward_begin": "Қайта жіберілген хаттың басы",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM өтуі",
     "dkim_na": "DKIM N/A",
     "all_categories": "Барлық санаттар",
-    "replied": "Жауап берілген"
+    "replied": "Жауап берілген",
+    "notifications": {
+      "new_email_title": "Жаңа хат: {sender}",
+      "new_message": "Жаңа хабарлама",
+      "multiple_title": "Сізде {count} жаңа хат бар",
+      "multiple_body": "Кіріс жәшігін көру үшін басыңыз"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

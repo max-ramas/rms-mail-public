@@ -42,6 +42,7 @@ const LOCALE_LIST = [
   "th",
   "he",
   "ur",
+  "fa",
   "bn",
   "ca",
   "ms",

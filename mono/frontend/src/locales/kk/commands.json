@@ -49,6 +49,7 @@
     "move_prompt": "Қалтаға жылжыту:",
     "toast_moved_success": "Жылжытылған",
     "cat_actions": "Әрекеттер",
-    "mail_print": "Хатты басып шығару"
+    "mail_print": "Хатты басып шығару",
+    "navigation_command_palette": "Пәрмендер тақтасын ашу"
   }
 }

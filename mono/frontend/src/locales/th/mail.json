@@ -47,7 +47,8 @@
       "hide_translation": "ซ่อนคำแปล",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "กลับ"
+      "back": "กลับ",
+      "more": "การดำเนินการเพิ่มเติม"
     },
     "pin_tooltip": "ปักหมุด / เลิกปัก — อีเมลที่ปักหมุดจะอยู่ด้านบน",
     "forward_begin": "เริ่มต้นข้อความที่ส่งต่อ",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "หมวดหมู่ทั้งหมด",
-    "replied": "ตอบกลับ"
+    "replied": "ตอบกลับ",
+    "notifications": {
+      "new_email_title": "อีเมลใหม่จาก: {sender}",
+      "new_message": "ข้อความใหม่",
+      "multiple_title": "คุณมีอีเมลใหม่ {count} ฉบับ",
+      "multiple_body": "คลิกเพื่อดูกล่องจดหมาย"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

@@ -47,7 +47,8 @@
       "hide_translation": "Ukryj tłumaczenie",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Wstecz"
+      "back": "Wstecz",
+      "more": "Więcej akcji"
     },
     "pin_tooltip": "Przypnij / Odepnij — przypięte emaile zostają na górze",
     "forward_begin": "Początek przekazanej wiadomości",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/D",
     "all_categories": "Wszystkie kategorie",
-    "replied": "Odpowiedziano"
+    "replied": "Odpowiedziano",
+    "notifications": {
+      "new_email_title": "Nowa wiadomość od: {sender}",
+      "new_message": "Nowa wiadomość",
+      "multiple_title": "Masz {count} nowych wiadomości",
+      "multiple_body": "Kliknij, aby zobaczyć skrzynkę odbiorczą"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

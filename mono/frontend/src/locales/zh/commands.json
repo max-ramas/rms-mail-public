@@ -49,6 +49,7 @@
     "move_prompt": "移至文件夹：",
     "toast_moved_success": "搬家了",
     "cat_actions": "操作",
-    "mail_print": "打印邮件"
+    "mail_print": "打印邮件",
+    "navigation_command_palette": "打开命令面板"
   }
 }

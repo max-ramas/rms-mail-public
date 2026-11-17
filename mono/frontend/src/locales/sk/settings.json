@@ -459,6 +459,7 @@
     "admin_users": "Používatelia",
     "admin_users_desc": "Spravujte registrované používateľské účty.",
     "loading_users": "Načítavajú sa používatelia",
-    "error_loading_users": "Používateľov sa nepodarilo načítať."
+    "error_loading_users": "Používateľov sa nepodarilo načítať.",
+    "mcp_last_used": "Naposledy použité {date}"
   }
 }

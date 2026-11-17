@@ -47,7 +47,8 @@
       "hide_translation": "Peida tõlge",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Tagasi"
+      "back": "Tagasi",
+      "more": "Rohkem toiminguid"
     },
     "pin_tooltip": "Kinnita / Vabasta — kinnitatud kirjad jäävad üles",
     "forward_begin": "Edastatud kirja algus",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Kõik kategooriad",
-    "replied": "Vastatud"
+    "replied": "Vastatud",
+    "notifications": {
+      "new_email_title": "Uus e-kiri saatjalt: {sender}",
+      "new_message": "Uus sõnum",
+      "multiple_title": "Teil on {count} uut e-kirja",
+      "multiple_body": "Klõpsake postkasti vaatamiseks"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

@@ -47,7 +47,8 @@
       "hide_translation": "Sembunyikan terjemahan",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Kembali"
+      "back": "Kembali",
+      "more": "Tindakan lainnya"
     },
     "pin_tooltip": "Sematkan / Lepas — email yang disematkan tetap di atas",
     "forward_begin": "Awal pesan yang diteruskan",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Semua kategori",
-    "replied": "Dibalas"
+    "replied": "Dibalas",
+    "notifications": {
+      "new_email_title": "Email baru dari: {sender}",
+      "new_message": "Pesan baru",
+      "multiple_title": "Anda memiliki {count} email baru",
+      "multiple_body": "Klik untuk melihat kotak masuk"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

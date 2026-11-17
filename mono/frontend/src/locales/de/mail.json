@@ -47,7 +47,8 @@
       "hide_translation": "Übersetzung ausblenden",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Zurück"
+      "back": "Zurück",
+      "more": "Weitere Aktionen"
     },
     "pin_tooltip": "Anheften / Lösen — angeheftete E-Mails bleiben oben",
     "forward_begin": "Anfang der weitergeleiteten Nachricht",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Alle Kategorien",
-    "replied": "Geantwortet"
+    "replied": "Geantwortet",
+    "notifications": {
+      "new_email_title": "Neue E-Mail von: {sender}",
+      "new_message": "Neue Nachricht",
+      "multiple_title": "Sie haben {count} neue E-Mails",
+      "multiple_body": "Klicken Sie hier, um Ihren Posteingang anzuzeigen"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

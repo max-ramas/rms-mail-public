@@ -47,7 +47,8 @@
       "hide_translation": "Skryť preklad",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Späť"
+      "back": "Späť",
+      "more": "Ďalšie akcie"
     },
     "pin_tooltip": "Pripnúť / Odopnúť – pripnuté e-maily zostávajú na vrchu",
     "forward_begin": "Začiatok preposlanej správy",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PREUKAZ",
     "dkim_na": "DKIM neuvádza sa",
     "all_categories": "Všetky kategórie",
-    "replied": "Zodpovedané"
+    "replied": "Zodpovedané",
+    "notifications": {
+      "new_email_title": "Nový e-mail od: {sender}",
+      "new_message": "Nová správa",
+      "multiple_title": "Máte {count} nových e-mailov",
+      "multiple_body": "Kliknutím zobrazíte doručenú poštu"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

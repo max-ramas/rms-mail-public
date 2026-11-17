@@ -47,7 +47,8 @@
       "hide_translation": "Απόκρυψη μετάφρασης",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Πίσω"
+      "back": "Πίσω",
+      "more": "Περισσότερες ενέργειες"
     },
     "pin_tooltip": "Καρφίτσωμα / Ξεκαρφίτσωμα — τα καρφιτσωμένα email μένουν στην κορυφή",
     "forward_begin": "Αρχή προωθημένου μηνύματος",
@@ -175,7 +176,13 @@
     "dkim_pass": "ΚΑΡΤΑ DKIM",
     "dkim_na": "ΔΚΙΜ Δ/Υ",
     "all_categories": "Όλες οι κατηγορίες",
-    "replied": "Απαντήθηκε"
+    "replied": "Απαντήθηκε",
+    "notifications": {
+      "new_email_title": "Νέο email από: {sender}",
+      "new_message": "Νέο μήνυμα",
+      "multiple_title": "Έχετε {count} νέα email",
+      "multiple_body": "Κάντε κλικ για προβολή των εισερχομένων"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

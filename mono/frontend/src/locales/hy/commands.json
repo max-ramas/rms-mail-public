@@ -49,6 +49,7 @@
     "move_prompt": "Տեղափոխել պանակ՝",
     "toast_moved_success": "Տեղափոխվել է",
     "cat_actions": "Գործողություններ",
-    "mail_print": "Տպել նամակը"
+    "mail_print": "Տպել նամակը",
+    "navigation_command_palette": "Բացել հրամանների ներկապնակը"
   }
 }

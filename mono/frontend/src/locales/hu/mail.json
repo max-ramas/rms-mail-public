@@ -47,7 +47,8 @@
       "hide_translation": "Fordítás elrejtése",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Vissza"
+      "back": "Vissza",
+      "more": "További műveletek"
     },
     "pin_tooltip": "Rögzítés / Feloldás — rögzített emailek felül maradnak",
     "forward_begin": "Továbbított üzenet kezdete",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM BÉRLET",
     "dkim_na": "DKIM N/A",
     "all_categories": "Minden kategória",
-    "replied": "Válaszolt"
+    "replied": "Válaszolt",
+    "notifications": {
+      "new_email_title": "Új e-mail tőle: {sender}",
+      "new_message": "Új üzenet",
+      "multiple_title": "{count} új e-mailje van",
+      "multiple_body": "Kattintson a beérkezett üzenetek megtekintéséhez"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

@@ -8,6 +8,10 @@ const TRASH_FOLDER_NAMES = new Set([
   "Deleted Items",
   "Papierkorb",
   "ゴミ箱",
+  "زباله‌دان",
+  "سطل زباله",
+  "Lixeira",
+  "Lixo",
 ]);
 
 export function isTrashFolder(

@@ -49,6 +49,7 @@
     "move_prompt": "Di chuyển đến thư mục:",
     "toast_moved_success": "Đã di chuyển",
     "cat_actions": "Hành động",
-    "mail_print": "In Email"
+    "mail_print": "In Email",
+    "navigation_command_palette": "Mở bảng lệnh"
   }
 }

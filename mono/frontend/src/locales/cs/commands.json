@@ -49,6 +49,7 @@
     "move_prompt": "Přesunout do složky:",
     "toast_moved_success": "Přesunuto",
     "cat_actions": "Akce",
-    "mail_print": "Vytisknout e-mail"
+    "mail_print": "Vytisknout e-mail",
+    "navigation_command_palette": "Otevřít paletu příkazů"
   }
 }

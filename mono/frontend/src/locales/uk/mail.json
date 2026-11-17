@@ -47,7 +47,8 @@
       "hide_translation": "Сховати переклад",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Назад"
+      "back": "Назад",
+      "more": "Інші дії"
     },
     "pin_tooltip": "Закріпити / Відкріпити — закріплені листи залишаються зверху",
     "forward_begin": "Початок пересланого листа",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Всі категорії",
-    "replied": "Отримана відповідь"
+    "replied": "Отримана відповідь",
+    "notifications": {
+      "new_email_title": "Новий лист від: {sender}",
+      "new_message": "Нове повідомлення",
+      "multiple_title": "У вас {count} нових листів",
+      "multiple_body": "Натисніть, щоб переглянути вхідні"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

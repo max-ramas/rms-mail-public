@@ -459,6 +459,7 @@
     "admin_users": "Usuaris",
     "admin_users_desc": "Gestiona els comptes d'usuari registrats.",
     "loading_users": "S'estan carregant usuaris...",
-    "error_loading_users": "No s'han pogut carregar els usuaris."
+    "error_loading_users": "No s'han pogut carregar els usuaris.",
+    "mcp_last_used": "Últim ús {date}"
   }
 }

@@ -47,7 +47,8 @@
       "hide_translation": "Slēpt tulkojumu",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Atpakaļ"
+      "back": "Atpakaļ",
+      "more": "Vairāk darbību"
     },
     "pin_tooltip": "Piespraust / Noņemt — piespraustie e-pasti paliek augšpusē",
     "forward_begin": "Pārsūtītās ziņas sākums",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM CAURLAIDE",
     "dkim_na": "DKIM N/A",
     "all_categories": "Visas kategorijas",
-    "replied": "Atbildēja"
+    "replied": "Atbildēja",
+    "notifications": {
+      "new_email_title": "Jauns e-pasts no: {sender}",
+      "new_message": "Jauna ziņa",
+      "multiple_title": "Jums ir {count} jauni e-pasti",
+      "multiple_body": "Noklikšķiniet, lai skatītu iesūtni"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

@@ -47,7 +47,8 @@
       "hide_translation": "Tərcüməni gizlət",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Geri"
+      "back": "Geri",
+      "more": "Digər əməliyyatlar"
     },
     "pin_tooltip": "Sancaqla / Çıxar — sancaqlanmış e-poçtlar yuxarıda qalır",
     "forward_begin": "Yönləndirilmiş mesajın başlanğıcı",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Bütün kateqoriyalar",
-    "replied": "Cavablandırıldı"
+    "replied": "Cavablandırıldı",
+    "notifications": {
+      "new_email_title": "Yeni məktub: {sender}",
+      "new_message": "Yeni mesaj",
+      "multiple_title": "{count} yeni məktubunuz var",
+      "multiple_body": "Gələnlər qutusuna baxmaq üçün klikləyin"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

@@ -47,7 +47,8 @@
       "hide_translation": "অনুবাদ লুকান",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "পিছনে"
+      "back": "পিছনে",
+      "more": "আরও কাজ"
     },
     "pin_tooltip": "পিন / আনপিন – পিন করা ইমেইল সবার উপরে থাকে",
     "forward_begin": "ফরওয়ার্ডকৃত বার্তা শুরু",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "সব বিভাগ",
-    "replied": "উত্তর দেওয়া"
+    "replied": "উত্তর দেওয়া",
+    "notifications": {
+      "new_email_title": "নতুন ইমেইল পাঠিয়েছেন: {sender}",
+      "new_message": "নতুন বার্তা",
+      "multiple_title": "আপনার {count}টি নতুন ইমেইল আছে",
+      "multiple_body": "ইনবক্স দেখতে ক্লিক করুন"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

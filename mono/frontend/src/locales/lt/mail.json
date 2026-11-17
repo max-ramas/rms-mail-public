@@ -47,7 +47,8 @@
       "hide_translation": "Slėpti vertimą",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Atgal"
+      "back": "Atgal",
+      "more": "Daugiau veiksmų"
     },
     "pin_tooltip": "Prisegti / Atsegti — prisegti laiškai lieka viršuje",
     "forward_begin": "Persiųsto laiško pradžia",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Visos kategorijos",
-    "replied": "Atsakyti"
+    "replied": "Atsakyti",
+    "notifications": {
+      "new_email_title": "Naujas el. laiškas nuo: {sender}",
+      "new_message": "Nauja žinutė",
+      "multiple_title": "Turite {count} naujus el. laiškus",
+      "multiple_body": "Spustelėkite, kad peržiūrėtumėte gautuosius"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

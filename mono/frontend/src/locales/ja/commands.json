@@ -49,6 +49,7 @@
     "move_prompt": "フォルダに移動:",
     "toast_moved_success": "移転しました",
     "cat_actions": "アクション",
-    "mail_print": "メールを印刷"
+    "mail_print": "メールを印刷",
+    "navigation_command_palette": "コマンドパレットを開く"
   }
 }

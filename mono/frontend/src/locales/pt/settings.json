@@ -459,6 +459,7 @@
     "admin_users": "Os usuários",
     "admin_users_desc": "Gerir contas de utilizador registadas.",
     "loading_users": "A carregar utilizadores...",
-    "error_loading_users": "Falha ao carregar utilizadores."
+    "error_loading_users": "Falha ao carregar utilizadores.",
+    "mcp_last_used": "Última utilização {date}"
   }
 }

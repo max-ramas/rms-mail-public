@@ -49,6 +49,7 @@
     "move_prompt": "Sposta nella cartella:",
     "toast_moved_success": "Mosso",
     "cat_actions": "Azioni",
-    "mail_print": "Stampa email"
+    "mail_print": "Stampa email",
+    "navigation_command_palette": "Apri tavolozza dei comandi"
   }
 }

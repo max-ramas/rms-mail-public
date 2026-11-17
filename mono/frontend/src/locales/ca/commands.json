@@ -49,6 +49,7 @@
     "move_prompt": "Mou a la carpeta:",
     "toast_moved_success": "Mogut",
     "cat_actions": "Accions",
-    "mail_print": "Imprimir correu"
+    "mail_print": "Imprimir correu",
+    "navigation_command_palette": "Obre la paleta d'ordres"
   }
 }

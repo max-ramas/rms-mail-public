@@ -49,6 +49,7 @@
     "move_prompt": "Premjesti u mapu:",
     "toast_moved_success": "Premješteno",
     "cat_actions": "Radnje",
-    "mail_print": "Ispiši e-poštu"
+    "mail_print": "Ispiši e-poštu",
+    "navigation_command_palette": "Otvori paletu naredbi"
   }
 }

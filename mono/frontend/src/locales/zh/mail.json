@@ -47,7 +47,8 @@
       "hide_translation": "隐藏翻译",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "返回"
+      "back": "返回",
+      "more": "更多操作"
     },
     "pin_tooltip": "置顶/取消置顶 — 置顶邮件始终显示在顶部",
     "forward_begin": "转发邮件开始",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM不适用",
     "all_categories": "所有类别",
-    "replied": "已回复"
+    "replied": "已回复",
+    "notifications": {
+      "new_email_title": "来自 {sender} 的新邮件",
+      "new_message": "新消息",
+      "multiple_title": "您有 {count} 封新邮件",
+      "multiple_body": "点击查看收件箱"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

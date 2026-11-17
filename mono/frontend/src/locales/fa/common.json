@@ -1,0 +1,23 @@
+{
+  "shortcuts": {
+    "title": "میانبرهای صفحه‌کلید",
+    "next_email": "ایمیل بعدی",
+    "prev_email": "ایمیل قبلی",
+    "reply": "پاسخ",
+    "new_email": "ایمیل جدید",
+    "delete": "حذف",
+    "toggle_read": "تغییر وضعیت خوانده‌شده",
+    "select_all": "انتخاب همه",
+    "chat": "گفتگو با هوش مصنوعی",
+    "pin": "سنجاق کردن",
+    "help": "راهنما"
+  },
+  "errors": {
+    "imap_connection": "خطای اتصال IMAP: {error}",
+    "ai_failed": "خطای هوش مصنوعی: {error}"
+  },
+  "error_title": "مشکلی پیش آمد",
+  "unexpected_error": "خطای غیرمنتظره",
+  "reload_page": "بارگذاری مجدد صفحه",
+  "loading": "در حال بارگذاری..."
+}

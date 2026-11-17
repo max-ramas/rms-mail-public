@@ -47,7 +47,8 @@
       "hide_translation": "הסתר תרגום",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "חזור"
+      "back": "חזור",
+      "more": "פעולות נוספות"
     },
     "pin_tooltip": "הצמד / בטל הצמדה — הודעות מוצמדות נשארות בראש הרשימה",
     "forward_begin": "תחילת הודעה שהועברה",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "כל הקטגוריות",
-    "replied": "השיב"
+    "replied": "השיב",
+    "notifications": {
+      "new_email_title": "אימייל חדש מאת: {sender}",
+      "new_message": "הודעה חדשה",
+      "multiple_title": "יש לך {count} אימיילים חדשים",
+      "multiple_body": "לחץ לצפייה בתיבת הדואר הנכנס"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

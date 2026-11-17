@@ -49,6 +49,7 @@
     "move_prompt": "Premakni v mapo:",
     "toast_moved_success": "Premaknjen",
     "cat_actions": "Dejanja",
-    "mail_print": "Natisni e-pošto"
+    "mail_print": "Natisni e-pošto",
+    "navigation_command_palette": "Odpri paleto ukazov"
   }
 }

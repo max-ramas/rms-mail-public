@@ -3,7 +3,54 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const LOCALES = ["en", "ru", "ka"];
+const LOCALES = [
+  "en",
+  "ru",
+  "ka",
+  "zh",
+  "es",
+  "hi",
+  "ar",
+  "fr",
+  "pt",
+  "ja",
+  "ko",
+  "de",
+  "it",
+  "nl",
+  "sv",
+  "da",
+  "nb",
+  "fi",
+  "lt",
+  "lv",
+  "et",
+  "pl",
+  "cs",
+  "hu",
+  "ro",
+  "bg",
+  "el",
+  "sr",
+  "hr",
+  "uk",
+  "kk",
+  "hy",
+  "az",
+  "uz",
+  "tr",
+  "id",
+  "vi",
+  "th",
+  "he",
+  "ur",
+  "fa",
+  "bn",
+  "ca",
+  "ms",
+  "sl",
+  "sk",
+];
 
 function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -18,9 +65,11 @@ function detectLocale(): string {
 
   // 2. Browser language
   if (typeof navigator !== "undefined") {
-    const lang = navigator.language || "";
-    if (lang.startsWith("ru")) return "ru";
-    if (lang.startsWith("ka") || lang.startsWith("ge")) return "ka";
+    const lang = (navigator.language || "").toLowerCase();
+    if (lang.startsWith("ge")) return "ka";
+    if (lang.startsWith("no") || lang.startsWith("nn")) return "nb";
+    const prefix = lang.split("-")[0];
+    if (prefix && LOCALES.includes(prefix)) return prefix;
   }
 
   return "en";

@@ -47,7 +47,8 @@
       "hide_translation": "Skjul oversettelse",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Tilbake"
+      "back": "Tilbake",
+      "more": "Flere handlinger"
     },
     "pin_tooltip": "Fest / Løsne — festede e-poster forblir øverst",
     "forward_begin": "Begynnelse av videresendt melding",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Alle kategorier",
-    "replied": "Besvart"
+    "replied": "Besvart",
+    "notifications": {
+      "new_email_title": "Ny e-post fra: {sender}",
+      "new_message": "Ny melding",
+      "multiple_title": "Du har {count} nye e-poster",
+      "multiple_body": "Klikk for å se innboksen"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

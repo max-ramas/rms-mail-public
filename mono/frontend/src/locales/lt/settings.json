@@ -459,6 +459,7 @@
     "admin_users": "Vartotojai",
     "admin_users_desc": "Tvarkyti registruotų naudotojų paskyras.",
     "loading_users": "Įkeliami naudotojai...",
-    "error_loading_users": "Nepavyko įkelti naudotojų."
+    "error_loading_users": "Nepavyko įkelti naudotojų.",
+    "mcp_last_used": "Paskutinį kartą naudota {date}"
   }
 }

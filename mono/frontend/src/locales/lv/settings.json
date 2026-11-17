@@ -459,6 +459,7 @@
     "admin_users": "Lietotāji",
     "admin_users_desc": "Pārvaldiet reģistrēto lietotāju kontus.",
     "loading_users": "Notiek lietotāju ielāde...",
-    "error_loading_users": "Neizdevās ielādēt lietotājus."
+    "error_loading_users": "Neizdevās ielādēt lietotājus.",
+    "mcp_last_used": "Pēdējoreiz izmantots {date}"
   }
 }

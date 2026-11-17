@@ -42,6 +42,7 @@ const LOCALES = [
   "th",
   "he",
   "ur",
+  "fa",
   "bn",
   "ca",
   "ms",

@@ -49,6 +49,7 @@
     "move_prompt": "Flytta till mapp:",
     "toast_moved_success": "Rörd",
     "cat_actions": "Åtgärder",
-    "mail_print": "Skriv ut e-post"
+    "mail_print": "Skriv ut e-post",
+    "navigation_command_palette": "Öppna kommandopaletten"
   }
 }

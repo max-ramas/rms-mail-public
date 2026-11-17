@@ -47,7 +47,8 @@
       "hide_translation": "Masquer la traduction",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Retour"
+      "back": "Retour",
+      "more": "Plus d'actions"
     },
     "pin_tooltip": "Épingler / Désépingler — les emails épinglés restent en haut",
     "forward_begin": "Début du message transféré",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Toutes les catégories",
-    "replied": "A répondu"
+    "replied": "A répondu",
+    "notifications": {
+      "new_email_title": "Nouvel e-mail de : {sender}",
+      "new_message": "Nouveau message",
+      "multiple_title": "Vous avez {count} nouveaux e-mails",
+      "multiple_body": "Cliquez pour voir votre boîte de réception"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

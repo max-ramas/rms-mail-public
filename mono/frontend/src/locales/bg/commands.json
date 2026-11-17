@@ -49,6 +49,7 @@
     "move_prompt": "Преместване в папка:",
     "toast_moved_success": "Преместен",
     "cat_actions": "Действия",
-    "mail_print": "Отпечатване на имейл"
+    "mail_print": "Отпечатване на имейл",
+    "navigation_command_palette": "Отвори палитрата с команди"
   }
 }

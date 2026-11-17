@@ -49,6 +49,7 @@
     "move_prompt": "Teisalda kausta:",
     "toast_moved_success": "Liigutatud",
     "cat_actions": "Toimingud",
-    "mail_print": "Prindi e-kiri"
+    "mail_print": "Prindi e-kiri",
+    "navigation_command_palette": "Ava käsupalett"
   }
 }

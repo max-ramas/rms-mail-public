@@ -47,7 +47,8 @@
       "hide_translation": "Dölj översättning",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Tillbaka"
+      "back": "Tillbaka",
+      "more": "Fler åtgärder"
     },
     "pin_tooltip": "Fäst / Lossa — fästa e-postmeddelanden stannar överst",
     "forward_begin": "Början av vidarebefordrat meddelande",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Alla kategorier",
-    "replied": "Besvarat"
+    "replied": "Besvarat",
+    "notifications": {
+      "new_email_title": "Nytt e-postmeddelande från: {sender}",
+      "new_message": "Nytt meddelande",
+      "multiple_title": "Du har {count} nya e-postmeddelanden",
+      "multiple_body": "Klicka för att visa din inkorg"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

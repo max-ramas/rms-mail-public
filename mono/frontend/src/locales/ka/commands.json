@@ -49,6 +49,7 @@
     "move_prompt": "საქაღალდეში გადატანა:",
     "toast_moved_success": "გადავიდა",
     "cat_actions": "მოქმედებები",
-    "mail_print": "ელფოსტის დაბეჭდვა"
+    "mail_print": "ელფოსტის დაბეჭდვა",
+    "navigation_command_palette": "ბრძანებათა პალიტრის გახსნა"
   }
 }

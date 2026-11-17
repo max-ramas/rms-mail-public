@@ -49,6 +49,7 @@
     "move_prompt": "ফোল্ডারে সরান:",
     "toast_moved_success": "সরানো হয়েছে",
     "cat_actions": "ক্রিয়া",
-    "mail_print": "ইমেইল প্রিন্ট করুন"
+    "mail_print": "ইমেইল প্রিন্ট করুন",
+    "navigation_command_palette": "কমান্ড প্যালেট খুলুন"
   }
 }

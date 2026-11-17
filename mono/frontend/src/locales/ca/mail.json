@@ -47,7 +47,8 @@
       "hide_translation": "Amagar traducció",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Enrere"
+      "back": "Enrere",
+      "more": "Més accions"
     },
     "pin_tooltip": "Fixar / Desfixar – els correus fixats es mostren a dalt",
     "forward_begin": "Inici del missatge reenviat",
@@ -175,7 +176,13 @@
     "dkim_pass": "PASSI DKIM",
     "dkim_na": "DKIM N/A",
     "all_categories": "Totes les categories",
-    "replied": "Respost"
+    "replied": "Respost",
+    "notifications": {
+      "new_email_title": "Correu nou de: {sender}",
+      "new_message": "Missatge nou",
+      "multiple_title": "Teniu {count} correus nous",
+      "multiple_body": "Feu clic per veure la safata d'entrada"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

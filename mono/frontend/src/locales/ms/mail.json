@@ -47,7 +47,8 @@
       "hide_translation": "Sembunyi terjemahan",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Kembali"
+      "back": "Kembali",
+      "more": "Tindakan lain"
     },
     "pin_tooltip": "Semat / Nyahsemat – e-mel disemat kekal di atas",
     "forward_begin": "Mula mesej yang diteruskan",
@@ -175,7 +176,13 @@
     "dkim_pass": "PAS DKIM",
     "dkim_na": "DKIM N/A",
     "all_categories": "Semua kategori",
-    "replied": "Dijawab"
+    "replied": "Dijawab",
+    "notifications": {
+      "new_email_title": "E-mel baharu daripada: {sender}",
+      "new_message": "Mesej baharu",
+      "multiple_title": "Anda mempunyai {count} e-mel baharu",
+      "multiple_body": "Klik untuk melihat peti masuk"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

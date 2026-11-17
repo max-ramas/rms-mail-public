@@ -47,7 +47,8 @@
       "hide_translation": "Թաքցնել թարգմանությունը",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Հետ"
+      "back": "Հետ",
+      "more": "Այլ գործողություններ"
     },
     "pin_tooltip": "Ամրացնել / Ապամրացնել — ամրացված նամակները մնում են վերևում",
     "forward_begin": "Փոխանցված նամակի սկիզբ",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM ԱՆՑՈՒՂԻ",
     "dkim_na": "DKIM N/A",
     "all_categories": "Բոլոր կատեգորիաները",
-    "replied": "Պատասխանված է"
+    "replied": "Պատասխանված է",
+    "notifications": {
+      "new_email_title": "Նոր նամակ՝ {sender}",
+      "new_message": "Նոր հաղորդագրություն",
+      "multiple_title": "Դուք ունեք {count} նոր նամակ",
+      "multiple_body": "Սեղմեք՝ մուտքայինները դիտելու համար"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

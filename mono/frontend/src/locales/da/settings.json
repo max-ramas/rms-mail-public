@@ -459,6 +459,7 @@
     "admin_users": "Brugere",
     "admin_users_desc": "Administrer registrerede brugerkonti.",
     "loading_users": "Indlæser brugere",
-    "error_loading_users": "Kunne ikke indlæse brugere."
+    "error_loading_users": "Kunne ikke indlæse brugere.",
+    "mcp_last_used": "Sidst brugt {date}"
   }
 }

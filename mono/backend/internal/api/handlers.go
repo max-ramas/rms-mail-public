@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -189,12 +190,29 @@ func (h *Handler) InvalidateEmailCacheByEmailID(ctx context.Context, emailID str
 
 func (h *Handler) HandleLicense(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"status": "free"})
+	latestVersion, _ := h.Store.GetSystemSetting(r.Context(), "latest_version")
+	releaseNotes, _ := h.Store.GetSystemSetting(r.Context(), "release_notes")
+	ch := strings.ToLower(strings.TrimSpace(os.Getenv("UPDATE_CHANNEL")))
+	if ch != "beta" && ch != "alpha" {
+		ch = "stable"
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":         "free",
+		"latest_version": latestVersion,
+		"release_notes":  releaseNotes,
+		"update_channel": ch,
+	})
 }
 
 func (h *Handler) HandleCheckUpdates(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok"})
+	latestVersion, _ := h.Store.GetSystemSetting(r.Context(), "latest_version")
+	releaseNotes, _ := h.Store.GetSystemSetting(r.Context(), "release_notes")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":         "free",
+		"latest_version": latestVersion,
+		"release_notes":  releaseNotes,
+	})
 }
 
 func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {

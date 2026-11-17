@@ -49,6 +49,7 @@
     "move_prompt": "Déplacer vers le dossier :",
     "toast_moved_success": "Déplacé",
     "cat_actions": "Actions",
-    "mail_print": "Imprimer l'e-mail"
+    "mail_print": "Imprimer l'e-mail",
+    "navigation_command_palette": "Ouvrir la palette de commandes"
   }
 }

@@ -3,17 +3,24 @@ package license
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// PublicKeyHex holds the Ed25519 public key used to verify signed update manifests.
+var PublicKeyHex = "d9af1d7613798c86a5652b587305e2f902effca8de82d47a3e66bde8b41d324f"
 
 // PingStore is the minimal store interface needed for license/update pings.
 type PingStore interface {
@@ -25,6 +32,7 @@ type PingStore interface {
 type Manager struct {
 	store      PingStore
 	serverURL  string
+	publicKey  ed25519.PublicKey
 	productID  string
 	version    string
 	httpClient *http.Client
@@ -32,9 +40,18 @@ type Manager struct {
 
 // NewManager creates a ping Manager for Mono edition.
 func NewManager(store PingStore, productID, version string) *Manager {
+	pubKeyHex := os.Getenv("LICENSE_PUBLIC_KEY")
+	if pubKeyHex == "" {
+		pubKeyHex = PublicKeyHex
+	}
+	var pubKey ed25519.PublicKey
+	if b, err := hex.DecodeString(pubKeyHex); err == nil && len(b) == ed25519.PublicKeySize {
+		pubKey = b
+	}
 	return &Manager{
 		store:      store,
 		serverURL:  "https://license.rms-ds.com",
+		publicKey:  pubKey,
 		productID:  productID,
 		version:    version,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
@@ -101,17 +118,19 @@ func (m *Manager) Ping(ctx context.Context) error {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	if pr.LatestVersion != "" {
+	if pr.LatestVersion != "" && pr.LatestVersion != "0.0.0" {
 		if err := m.store.SetSystemSetting(ctx, "latest_version", pr.LatestVersion); err != nil {
 			slog.Info("license: failed to store latest_version", "error", err)
 		}
-	}
-	if pr.ReleaseNotes != "" {
-		if err := m.store.SetSystemSetting(ctx, "release_notes", pr.ReleaseNotes); err != nil {
-			slog.Info("license: failed to store release_notes", "error", err)
+		if pr.ReleaseNotes != "" {
+			if err := m.store.SetSystemSetting(ctx, "release_notes", pr.ReleaseNotes); err != nil {
+				slog.Info("license: failed to store release_notes", "error", err)
+			}
+		} else {
+			m.store.SetSystemSetting(ctx, "release_notes", "")
 		}
-	} else if pr.LatestVersion != "" {
-		m.store.SetSystemSetting(ctx, "release_notes", "")
+	} else {
+		m.checkUpdateFromServer(ctx, channel)
 	}
 
 	if err := m.recordPingTelemetry(ctx, uid); err != nil {
@@ -120,6 +139,65 @@ func (m *Manager) Ping(ctx context.Context) error {
 
 	slog.Info("license: ping ok", "instance_uid", uid, "license_status", pr.LicenseStatus, "version", m.version)
 	return nil
+}
+
+func (m *Manager) checkUpdateFromServer(ctx context.Context, channel string) {
+	if m.productID == "" || m.serverURL == "" {
+		return
+	}
+	u := fmt.Sprintf("%s/api/v1/software/update-check/%s?platform=linux&arch=amd64&format=tar.gz&channel=%s&current_version=%s",
+		strings.TrimRight(m.serverURL, "/"),
+		url.PathEscape(m.productID),
+		url.QueryEscape(channel),
+		url.QueryEscape(m.version),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return
+	}
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+
+	var ucResp struct {
+		Version           string `json:"version"`
+		ReleaseNotes      string `json:"release_notes"`
+		Manifest          string `json:"manifest"`
+		ManifestSignature string `json:"manifest_signature"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&ucResp); err != nil {
+		return
+	}
+	if ucResp.Version == "" || ucResp.Version == "0.0.0" {
+		return
+	}
+
+	if len(m.publicKey) > 0 && ucResp.Manifest != "" && ucResp.ManifestSignature != "" {
+		sigBytes, err := base64.RawURLEncoding.DecodeString(ucResp.ManifestSignature)
+		if err != nil || len(sigBytes) != ed25519.SignatureSize || !ed25519.Verify(m.publicKey, []byte(ucResp.Manifest), sigBytes) {
+			slog.Warn("license: update-check manifest signature verification failed")
+			return
+		}
+		var manifest struct {
+			ProductID string `json:"product_id"`
+			Version   string `json:"version"`
+		}
+		if err := json.Unmarshal([]byte(ucResp.Manifest), &manifest); err != nil {
+			return
+		}
+		if (manifest.ProductID != "" && manifest.ProductID != m.productID) || manifest.Version != ucResp.Version {
+			slog.Warn("license: update-check manifest mismatch", "manifest_product", manifest.ProductID, "manifest_version", manifest.Version)
+			return
+		}
+	}
+
+	_ = m.store.SetSystemSetting(ctx, "latest_version", ucResp.Version)
+	_ = m.store.SetSystemSetting(ctx, "release_notes", ucResp.ReleaseNotes)
 }
 
 func (m *Manager) recordPingTelemetry(ctx context.Context, uid string) error {

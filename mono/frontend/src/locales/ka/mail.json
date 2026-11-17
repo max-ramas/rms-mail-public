@@ -47,7 +47,8 @@
       "hide_translation": "თარგმანის დამალვა",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "უკან"
+      "back": "უკან",
+      "more": "მეტი მოქმედება"
     },
     "default": "ნაგულისხმევი",
     "pin_tooltip": "პინი / გაპინის მოხსნა — დაპინებული წერილები ყოველთვის ზევითაა",
@@ -176,7 +177,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "ყველა კატეგორია",
-    "replied": "ნაპასუხები"
+    "replied": "ნაპასუხები",
+    "notifications": {
+      "new_email_title": "ახალი წერილი: {sender}",
+      "new_message": "ახალი შეტყობინება",
+      "multiple_title": "თქვენ გაქვთ {count} ახალი წერილი",
+      "multiple_body": "დააწკაპუნეთ შემოსულების სანახავად"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

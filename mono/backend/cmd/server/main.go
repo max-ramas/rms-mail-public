@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -34,7 +35,7 @@ import (
 )
 
 // AppVersion holds the version string injected via ldflags at build time.
-var AppVersion string = "3.1.10"
+var AppVersion string = "3.1.13"
 
 type schemaStore interface {
 	InitSchema(ctx context.Context, schema string) error
@@ -265,7 +266,7 @@ func main() {
 	// Initialize License Manager
 	appVersion := AppVersion
 	if appVersion == "" {
-		appVersion = "3.1.10" // Fallback
+		appVersion = "3.1.13" // Fallback
 	}
 	productID := edition.Current.ProductID()
 	license.InitHK()
@@ -595,14 +596,27 @@ func main() {
 	// Login rate limiter: 5 requests per 60s per IP (brute-force protection)
 	var loginLimiter func(http.Handler) http.Handler
 	if loginLimiter == nil {
-		loginLimiter = func(next http.Handler) http.Handler { return next }
+		loginLimiter = middleware.NewInMemoryRateLimiter(5).Middleware
 	}
 	loginHandler := loginLimiter(http.HandlerFunc(apiHandler.HandleLogin))
 	mux.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		loginHandler.ServeHTTP(w, r)
 	})
 
+	// Global API limit per IP per minute. The SPA fires many small calls per screen (folders, counts,
+	// emails, groups, ...), and a whole office may share one IP behind NAT, so the default is generous.
+	// Override with GLOBAL_RATE_LIMIT_PER_MIN.
+	globalLimit := 600
+	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv("GLOBAL_RATE_LIMIT_PER_MIN"))); err == nil && v > 0 {
+		globalLimit = v
+	}
 	var aiRateLimit, searchRateLimit, mcpRateLimit, globalRateLimit func(http.Handler) http.Handler
+	if aiRateLimit == nil {
+		aiRateLimit = middleware.NewInMemoryRateLimiter(30).Middleware
+		searchRateLimit = middleware.NewInMemoryRateLimiter(60).Middleware
+		mcpRateLimit = middleware.NewInMemoryRateLimiter(30).Middleware
+		globalRateLimit = middleware.NewInMemoryRateLimiter(globalLimit).Middleware
+	}
 	mux.HandleFunc("/api/auth/status", apiHandler.HandleAuthStatus)
 	mux.HandleFunc("/api/auth/edition", apiHandler.EditionInfo)
 	mux.HandleFunc("/api/auth/verify", apiHandler.HandleVerifyToken)
@@ -822,7 +836,7 @@ func main() {
 	handler = middleware.AIDisableMiddleware(aiDisabled, handler)
 	handler = middleware.JWTAuthMiddleware(handler)
 	handler = middleware.SentryMiddleware(handler)
-	// Global API rate limit (60/min/IP); skip health probes.
+	// Global API rate limit (GLOBAL_RATE_LIMIT_PER_MIN, default 600/min/IP); skip health probes.
 	innerHandler := handler
 	rateLimited := globalRateLimit(innerHandler)
 	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -16,6 +16,22 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { API_BASE } from "@/hooks/useEmailTypes";
 
+function isNewerSemver(current: string, latest: string): boolean {
+  const clean = (v: string) => v.trim().replace(/^v/i, "").split("-")[0];
+  const c = clean(current);
+  const l = clean(latest);
+  if (!l || l === "0.0.0" || l === c) return false;
+  const cp = c.split(".").map((n) => parseInt(n, 10) || 0);
+  const lp = l.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(cp.length, lp.length); i++) {
+    const a = cp[i] ?? 0;
+    const b = lp[i] ?? 0;
+    if (b > a) return true;
+    if (b < a) return false;
+  }
+  return false;
+}
+
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -54,14 +70,14 @@ export function NotificationCenter() {
 
   // Return null during SSR
   const currentVersion =
-    process.env.NEXT_PUBLIC_APP_VERSION || packageJson.version || "3.0.1";
+    licenseInfo?.app_version ||
+    process.env.NEXT_PUBLIC_APP_VERSION ||
+    packageJson.version ||
+    "3.0.1";
   const latestVersion = licenseInfo?.latest_version || currentVersion;
   const releaseNotes = licenseInfo?.release_notes || "";
 
-  const isUpdateAvailable =
-    latestVersion !== "0.0.0" &&
-    latestVersion !== currentVersion &&
-    latestVersion !== "";
+  const isUpdateAvailable = isNewerSemver(currentVersion, latestVersion);
 
   const isUnread = isUpdateAvailable && latestVersion !== dismissedVersion;
 

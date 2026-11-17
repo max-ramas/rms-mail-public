@@ -459,6 +459,7 @@
     "admin_users": "Korisnici",
     "admin_users_desc": "Upravljanje registriranim korisničkim računima.",
     "loading_users": "Učitavanje korisnika",
-    "error_loading_users": "Učitavanje korisnika nije uspjelo."
+    "error_loading_users": "Učitavanje korisnika nije uspjelo.",
+    "mcp_last_used": "Zadnje korišteno {date}"
   }
 }

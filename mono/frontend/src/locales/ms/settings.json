@@ -459,6 +459,7 @@
     "admin_users": "Pengguna",
     "admin_users_desc": "Urus akaun pengguna berdaftar.",
     "loading_users": "Memuatkan pengguna...",
-    "error_loading_users": "Gagal memuatkan pengguna."
+    "error_loading_users": "Gagal memuatkan pengguna.",
+    "mcp_last_used": "Terakhir digunakan {date}"
   }
 }

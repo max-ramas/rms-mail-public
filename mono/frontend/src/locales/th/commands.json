@@ -49,6 +49,7 @@
     "move_prompt": "ย้ายไปที่โฟลเดอร์:",
     "toast_moved_success": "ย้ายแล้ว",
     "cat_actions": "การดำเนินการ",
-    "mail_print": "พิมพ์อีเมล"
+    "mail_print": "พิมพ์อีเมล",
+    "navigation_command_palette": "เปิดพาเล็ตคำสั่ง"
   }
 }

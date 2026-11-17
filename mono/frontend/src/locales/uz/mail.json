@@ -47,7 +47,8 @@
       "hide_translation": "Tarjimani yashirish",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Orqaga"
+      "back": "Orqaga",
+      "more": "Boshqa amallar"
     },
     "pin_tooltip": "Qadash / Olib tashlash — qadalgan xatlar yuqorida qoladi",
     "forward_begin": "Yo'llangan xabarning boshlanishi",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM Yo&#39;q",
     "all_categories": "Barcha toifalar",
-    "replied": "Javob berildi"
+    "replied": "Javob berildi",
+    "notifications": {
+      "new_email_title": "Yangi xat: {sender}",
+      "new_message": "Yangi xabar",
+      "multiple_title": "Sizda {count} ta yangi xat bor",
+      "multiple_body": "Kiruvchi xatlarni koʻrish uchun bosing"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

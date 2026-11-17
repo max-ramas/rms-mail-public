@@ -459,6 +459,7 @@
     "admin_users": "Χρήστες",
     "admin_users_desc": "Διαχείριση εγγεγραμμένων λογαριασμών χρηστών.",
     "loading_users": "Φόρτωση χρηστών",
-    "error_loading_users": "Αποτυχία φόρτωσης χρηστών."
+    "error_loading_users": "Αποτυχία φόρτωσης χρηστών.",
+    "mcp_last_used": "Τελευταία χρήση {date}"
   }
 }

@@ -459,6 +459,7 @@
     "admin_users": "ユーザー",
     "admin_users_desc": "登録ユーザーアカウントを管理します。",
     "loading_users": "ユーザーを読み込み中...",
-    "error_loading_users": "ユーザーの読み込みに失敗しました。"
+    "error_loading_users": "ユーザーの読み込みに失敗しました。",
+    "mcp_last_used": "最終使用 {date}"
   }
 }

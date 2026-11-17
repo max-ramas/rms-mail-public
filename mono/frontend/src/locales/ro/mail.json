@@ -47,7 +47,8 @@
       "hide_translation": "Ascunde traducerea",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Înapoi"
+      "back": "Înapoi",
+      "more": "Mai multe acțiuni"
     },
     "pin_tooltip": "Fixează / Defixează — emailurile fixate rămân sus",
     "forward_begin": "Începutul mesajului redirecționat",
@@ -175,7 +176,13 @@
     "dkim_pass": "PERMIS DKIM",
     "dkim_na": "DKIM N/A",
     "all_categories": "Toate categoriile",
-    "replied": "Cu răspuns"
+    "replied": "Cu răspuns",
+    "notifications": {
+      "new_email_title": "E-mail nou de la: {sender}",
+      "new_message": "Mesaj nou",
+      "multiple_title": "Aveți {count} e-mailuri noi",
+      "multiple_body": "Faceți clic pentru a vedea mesajele primite"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

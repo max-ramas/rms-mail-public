@@ -47,7 +47,8 @@
       "hide_translation": "翻訳を隠す",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "戻る"
+      "back": "戻る",
+      "more": "その他の操作"
     },
     "pin_tooltip": "ピン留め/解除 — ピン留めされたメールは上部に表示",
     "forward_begin": "転送メッセージの始まり",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIMパス",
     "dkim_na": "DKIM該当なし",
     "all_categories": "すべてのカテゴリー",
-    "replied": "答えた"
+    "replied": "答えた",
+    "notifications": {
+      "new_email_title": "新着メール: {sender}",
+      "new_message": "新着メッセージ",
+      "multiple_title": "{count}件の新着メールがあります",
+      "multiple_body": "クリックして受信トレイを表示"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

@@ -49,6 +49,7 @@
     "move_prompt": "העבר לתיקיה:",
     "toast_moved_success": "נִרגָשׁ",
     "cat_actions": "פעולות",
-    "mail_print": "הדפסת דוא״ל"
+    "mail_print": "הדפסת דוא״ל",
+    "navigation_command_palette": "פתח חלונית פקודות"
   }
 }

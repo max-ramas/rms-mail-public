@@ -459,6 +459,7 @@
     "admin_users": "المستخدمون",
     "admin_users_desc": "إدارة حسابات المستخدمين المسجلين.",
     "loading_users": "تحميل المستخدمين…",
-    "error_loading_users": "فشل تحميل المستخدمين."
+    "error_loading_users": "فشل تحميل المستخدمين.",
+    "mcp_last_used": "آخر استخدام {date}"
   }
 }

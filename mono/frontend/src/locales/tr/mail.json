@@ -47,7 +47,8 @@
       "hide_translation": "Çeviriyi Gizle",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Geri"
+      "back": "Geri",
+      "more": "Diğer işlemler"
     },
     "pin_tooltip": "Sabitle / Kaldır — sabitlenen e-postalar üstte kalır",
     "forward_begin": "İletilen mesajın başlangıcı",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Tüm kategoriler",
-    "replied": "Yanıtladı"
+    "replied": "Yanıtladı",
+    "notifications": {
+      "new_email_title": "Yeni e-posta: {sender}",
+      "new_message": "Yeni mesaj",
+      "multiple_title": "{count} yeni e-postanız var",
+      "multiple_body": "Gelen kutunuzu görmek için tıklayın"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

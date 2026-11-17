@@ -459,6 +459,7 @@
     "admin_users": "İstifadəçilər",
     "admin_users_desc": "Qeydiyyatdan keçmiş istifadəçi hesablarını idarə edin.",
     "loading_users": "İstifadəçilər yüklənir...",
-    "error_loading_users": "İstifadəçiləri yükləmək alınmadı."
+    "error_loading_users": "İstifadəçiləri yükləmək alınmadı.",
+    "mcp_last_used": "Son istifadə {date}"
   }
 }

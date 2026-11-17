@@ -49,6 +49,7 @@
     "move_prompt": "Mutați în dosar:",
     "toast_moved_success": "Mutat",
     "cat_actions": "Acțiuni",
-    "mail_print": "Tipărește emailul"
+    "mail_print": "Tipărește emailul",
+    "navigation_command_palette": "Deschide paleta de comenzi"
   }
 }

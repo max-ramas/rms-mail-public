@@ -49,6 +49,7 @@
     "move_prompt": "Flytt til mappe:",
     "toast_moved_success": "Flyttet",
     "cat_actions": "Handlinger",
-    "mail_print": "Skriv ut e-post"
+    "mail_print": "Skriv ut e-post",
+    "navigation_command_palette": "Åpne kommandopaletten"
   }
 }

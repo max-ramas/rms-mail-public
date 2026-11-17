@@ -71,6 +71,7 @@ export default async function RootLayout({
     "th",
     "he",
     "ur",
+    "fa",
     "bn",
     "ca",
     "ms",

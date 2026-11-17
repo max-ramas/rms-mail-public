@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.13] — 2026-11-17
+
+### Added
+- **Persian (Farsi, `fa`) Localization & RTL**: Full native localization across all 5 translation namespaces (`auth`, `commands`, `common`, `mail`, `settings` — 727 keys), full RTL layout support (`dir="rtl"`), Persian language switcher option (`🇮🇷 فارسی`), AI email translation target mapping for all 46 supported locales, and Persian/Portuguese IMAP folder sorting & Trash detection fallbacks.
+- **Documentation**: Added Portuguese (`pt` / `🇵🇹 Português`) alongside Persian (`fa` / `🇮🇷 فارسی`) in the internationalization table (46 languages total).
+
+### Fixed
+- **i18n Parity (46 Locales)**: Translated `login.remember_me`, `commands.navigation_command_palette`, `mail.notifications.*`, `mail.actions.more`, and `settings.mcp_last_used` across all locales (100% key parity across 46 languages).
+- **Login Locale Redirect**: Fixed `/login` redirect page to recognize all 46 supported locales instead of falling back to English for non-`en/ru/ka` users.
+- **Update Check Integration**: `license.Manager.Ping` now queries `/api/v1/software/update-check/:product_id` (backed by `rms-update-center`) with Ed25519 manifest signature verification when the heartbeat response carries a `"0.0.0"` placeholder version; `NotificationCenter` now uses semver comparison (`isNewerSemver`) so older versions are never reported as updates.
+- **Folder Sorting**: `GetFolders` (PostgreSQL & SQLite) now prioritizes RFC 6154 `special_use` roles alongside localized folder name patterns.
+
 ## [3.1.12] — 2026-11-08
 
 Hotfix.

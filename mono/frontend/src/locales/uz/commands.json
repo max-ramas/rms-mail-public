@@ -49,6 +49,7 @@
     "move_prompt": "Jildga ko'chirish:",
     "toast_moved_success": "Koʻchirildi",
     "cat_actions": "Amallar",
-    "mail_print": "Xatni chop etish"
+    "mail_print": "Xatni chop etish",
+    "navigation_command_palette": "Buyruqlar panelini ochish"
   }
 }

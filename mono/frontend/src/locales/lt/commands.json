@@ -49,6 +49,7 @@
     "move_prompt": "Perkelti į aplanką:",
     "toast_moved_success": "Perkeltas",
     "cat_actions": "Veiksmai",
-    "mail_print": "Spausdinti el. laišką"
+    "mail_print": "Spausdinti el. laišką",
+    "navigation_command_palette": "Atidaryti komandų paletę"
   }
 }

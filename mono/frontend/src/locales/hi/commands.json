@@ -49,6 +49,7 @@
     "move_prompt": "फ़ोल्डर में ले जाएँ:",
     "toast_moved_success": "ले जाया गया",
     "cat_actions": "क्रियाएँ",
-    "mail_print": "ईमेल प्रिंट करें"
+    "mail_print": "ईमेल प्रिंट करें",
+    "navigation_command_palette": "कमांड पैलेट खोलें"
   }
 }

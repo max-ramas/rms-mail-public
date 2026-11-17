@@ -49,6 +49,7 @@
     "move_prompt": "Pārvietot uz mapi:",
     "toast_moved_success": "Pārvietots",
     "cat_actions": "Darbības",
-    "mail_print": "Drukāt e-pastu"
+    "mail_print": "Drukāt e-pastu",
+    "navigation_command_palette": "Atvērt komandu paleti"
   }
 }

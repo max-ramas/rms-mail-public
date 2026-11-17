@@ -49,6 +49,7 @@
     "move_prompt": "الانتقال إلى المجلد:",
     "toast_moved_success": "انتقل",
     "cat_actions": "الإجراءات",
-    "mail_print": "طباعة البريد"
+    "mail_print": "طباعة البريد",
+    "navigation_command_palette": "فتح لوحة الأوامر"
   }
 }

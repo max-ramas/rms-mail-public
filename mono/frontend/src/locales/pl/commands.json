@@ -49,6 +49,7 @@
     "move_prompt": "Przenieś do folderu:",
     "toast_moved_success": "Wzruszony",
     "cat_actions": "Akcje",
-    "mail_print": "Drukuj e-mail"
+    "mail_print": "Drukuj e-mail",
+    "navigation_command_palette": "Otwórz paletę poleceń"
   }
 }

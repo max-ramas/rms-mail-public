@@ -49,6 +49,7 @@
     "move_prompt": "Qovluğa köçürün:",
     "toast_moved_success": "Köçürüldü",
     "cat_actions": "Əməliyyatlar",
-    "mail_print": "E-poçtu çap et"
+    "mail_print": "E-poçtu çap et",
+    "navigation_command_palette": "Əmrlər palitrasını aç"
   }
 }

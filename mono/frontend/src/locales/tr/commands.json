@@ -49,6 +49,7 @@
     "move_prompt": "Klasöre taşı:",
     "toast_moved_success": "Etkilenmiş",
     "cat_actions": "İşlemler",
-    "mail_print": "E-postayı Yazdır"
+    "mail_print": "E-postayı Yazdır",
+    "navigation_command_palette": "Komut Paletini Aç"
   }
 }

@@ -47,7 +47,8 @@
       "hide_translation": "Skrij prevod",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Nazaj"
+      "back": "Nazaj",
+      "more": "Več dejanj"
     },
     "pin_tooltip": "Pripni / Odpni – pripeta e-pošta ostane na vrhu",
     "forward_begin": "Začetek posredovanega sporočila",
@@ -175,7 +176,13 @@
     "dkim_pass": "PREPUSTNICA DKIM",
     "dkim_na": "DKIM Ni na voljo",
     "all_categories": "Vse kategorije",
-    "replied": "Odgovorjeno"
+    "replied": "Odgovorjeno",
+    "notifications": {
+      "new_email_title": "Nova e-pošta od: {sender}",
+      "new_message": "Novo sporočilo",
+      "multiple_title": "Imate {count} novih e-poštnih sporočil",
+      "multiple_body": "Kliknite za ogled prejete pošte"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

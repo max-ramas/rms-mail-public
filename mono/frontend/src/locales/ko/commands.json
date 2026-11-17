@@ -49,6 +49,7 @@
     "move_prompt": "폴더로 이동:",
     "toast_moved_success": "움직이는",
     "cat_actions": "작업",
-    "mail_print": "이메일 인쇄"
+    "mail_print": "이메일 인쇄",
+    "navigation_command_palette": "명령 팔레트 열기"
   }
 }

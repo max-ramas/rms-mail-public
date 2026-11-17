@@ -49,6 +49,7 @@
     "move_prompt": "Премести у фасциклу:",
     "toast_moved_success": "Пресељено",
     "cat_actions": "Радње",
-    "mail_print": "Одштампај имејл"
+    "mail_print": "Одштампај имејл",
+    "navigation_command_palette": "Отвори палету команди"
   }
 }

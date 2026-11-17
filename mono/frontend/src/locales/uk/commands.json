@@ -49,6 +49,7 @@
     "move_prompt": "Перемістити в папку:",
     "toast_moved_success": "Переїхав",
     "cat_actions": "Дії",
-    "mail_print": "Друк листа"
+    "mail_print": "Друк листа",
+    "navigation_command_palette": "Відкрити палітру команд"
   }
 }

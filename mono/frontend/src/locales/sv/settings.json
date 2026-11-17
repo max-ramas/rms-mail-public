@@ -459,6 +459,7 @@
     "admin_users": "Users",
     "admin_users_desc": "Manage registered user accounts.",
     "loading_users": "Loading users...",
-    "error_loading_users": "Failed to load users."
+    "error_loading_users": "Failed to load users.",
+    "mcp_last_used": "Senast använd {date}"
   }
 }

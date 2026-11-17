@@ -47,7 +47,8 @@
       "hide_translation": "Vertaling verbergen",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Terug"
+      "back": "Terug",
+      "more": "Meer acties"
     },
     "pin_tooltip": "Vastzetten / Losmaken — vastgezette e-mails blijven bovenaan",
     "forward_begin": "Begin doorgestuurd bericht",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM N/A",
     "all_categories": "Alle categorieën",
-    "replied": "Beantwoord"
+    "replied": "Beantwoord",
+    "notifications": {
+      "new_email_title": "Nieuwe e-mail van: {sender}",
+      "new_message": "Nieuw bericht",
+      "multiple_title": "U heeft {count} nieuwe e-mails",
+      "multiple_body": "Klik om uw Postvak IN te bekijken"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

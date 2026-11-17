@@ -49,6 +49,7 @@
     "move_prompt": "Pindah ke folder:",
     "toast_moved_success": "Terharu",
     "cat_actions": "Tindakan",
-    "mail_print": "Cetak E-mel"
+    "mail_print": "Cetak E-mel",
+    "navigation_command_palette": "Buka Palet Arahan"
   }
 }

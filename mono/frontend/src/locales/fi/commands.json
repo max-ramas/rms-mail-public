@@ -49,6 +49,7 @@
     "move_prompt": "Siirrä kansioon:",
     "toast_moved_success": "Siirretty",
     "cat_actions": "Toiminnot",
-    "mail_print": "Tulosta sähköposti"
+    "mail_print": "Tulosta sähköposti",
+    "navigation_command_palette": "Avaa komentovalikko"
   }
 }

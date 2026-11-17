@@ -47,7 +47,8 @@
       "hide_translation": "Ẩn bản dịch",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Quay lại"
+      "back": "Quay lại",
+      "more": "Thao tác khác"
     },
     "pin_tooltip": "Ghim / Bỏ ghim — email được ghim luôn ở trên cùng",
     "forward_begin": "Bắt đầu thư chuyển tiếp",
@@ -175,7 +176,13 @@
     "dkim_pass": "THẺ DKIM",
     "dkim_na": "DKIM Không áp dụng",
     "all_categories": "Tất cả danh mục",
-    "replied": "Đã trả lời"
+    "replied": "Đã trả lời",
+    "notifications": {
+      "new_email_title": "Email mới từ: {sender}",
+      "new_message": "Tin nhắn mới",
+      "multiple_title": "Bạn có {count} email mới",
+      "multiple_body": "Nhấp để xem hộp thư đến"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

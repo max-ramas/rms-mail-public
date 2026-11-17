@@ -459,6 +459,7 @@
     "admin_users": "उपयोगकर्ता",
     "admin_users_desc": "पंजीकृत उपयोगकर्ता खाते प्रबंधित करें।",
     "loading_users": "यूज़र लोड हो रहे हैं...",
-    "error_loading_users": "यूज़र को लोड नहीं किया जा सका।"
+    "error_loading_users": "यूज़र को लोड नहीं किया जा सका।",
+    "mcp_last_used": "अंतिम उपयोग {date}"
   }
 }

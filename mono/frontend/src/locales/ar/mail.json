@@ -47,7 +47,8 @@
       "hide_translation": "إخفاء الترجمة",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "رجوع"
+      "back": "رجوع",
+      "more": "المزيد من الإجراءات"
     },
     "pin_tooltip": "تثبيت / إلغاء التثبيت — تبقى الرسائل المثبتة في الأعلى",
     "forward_begin": "بداية الرسالة المُعاد توجيهها",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PASS",
     "dkim_na": "DKIM غير متوفر",
     "all_categories": "كل الفئات",
-    "replied": "تم الإجابة عليها"
+    "replied": "تم الإجابة عليها",
+    "notifications": {
+      "new_email_title": "بريد جديد من: {sender}",
+      "new_message": "رسالة جديدة",
+      "multiple_title": "لديك {count} رسائل بريد جديدة",
+      "multiple_body": "انقر لعرض صندوق الوارد"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

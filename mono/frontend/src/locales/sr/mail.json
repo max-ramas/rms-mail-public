@@ -47,7 +47,8 @@
       "hide_translation": "Сакриј превод",
       "save_draft": "Save Draft",
       "saving": "Saving...",
-      "back": "Nazad"
+      "back": "Nazad",
+      "more": "Више радњи"
     },
     "pin_tooltip": "Закачи / Откачи — закачени имејлови остају на врху",
     "forward_begin": "Почетак прослеђене поруке",
@@ -175,7 +176,13 @@
     "dkim_pass": "DKIM PROPUSNICA",
     "dkim_na": "DKIM N/P",
     "all_categories": "Све категорије",
-    "replied": "Odgovoreno"
+    "replied": "Odgovoreno",
+    "notifications": {
+      "new_email_title": "Нова е-пошта од: {sender}",
+      "new_message": "Нова порука",
+      "multiple_title": "Имате {count} нових порука",
+      "multiple_body": "Кликните да видите примљене поруке"
+    }
   },
   "expand_filters": "Expand filters",
   "collapse_filters": "Collapse filters",

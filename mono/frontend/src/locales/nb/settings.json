@@ -459,6 +459,7 @@
     "admin_users": "Brukere",
     "admin_users_desc": "Administrer registrerte brukerkontoer.",
     "loading_users": "Laster brukere",
-    "error_loading_users": "Kunne ikke laste inn brukere."
+    "error_loading_users": "Kunne ikke laste inn brukere.",
+    "mcp_last_used": "Sist brukt {date}"
   }
 }

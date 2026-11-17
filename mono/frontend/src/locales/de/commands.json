@@ -49,6 +49,7 @@
     "move_prompt": "In Ordner verschieben:",
     "toast_moved_success": "Verschoben",
     "cat_actions": "Aktionen",
-    "mail_print": "E-Mail drucken"
+    "mail_print": "E-Mail drucken",
+    "navigation_command_palette": "Befehlspalette öffnen"
   }
 }

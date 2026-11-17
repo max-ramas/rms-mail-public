@@ -459,6 +459,7 @@
     "admin_users": "Käyttäjät",
     "admin_users_desc": "Hallinnoi rekisteröityjä käyttäjätilejä.",
     "loading_users": "Ladataan käyttäjiä...",
-    "error_loading_users": "Käyttäjien lataaminen epäonnistui."
+    "error_loading_users": "Käyttäjien lataaminen epäonnistui.",
+    "mcp_last_used": "Viimeksi käytetty {date}"
   }
 }

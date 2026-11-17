@@ -23,23 +23,23 @@ func (s *Storage) GetFolders(ctx context.Context, accountID string) ([]models.Fo
 					FROM folders f JOIN accounts a ON f.account_id = a.id
 					WHERE f.is_subscribed = 1
 					GROUP BY f.id
-					ORDER BY CASE WHEN UPPER(f.name) = 'INBOX' THEN 1 WHEN UPPER(f.name) LIKE '%SENT%' OR UPPER(f.name) LIKE '%ОТПРАВЛ%' THEN 2
-												WHEN UPPER(f.name) LIKE '%DRAFT%' OR UPPER(f.name) LIKE '%ЧЕРНОВ%' THEN 3
-												WHEN UPPER(f.name) LIKE '%IMPORTANT%' OR UPPER(f.name) LIKE '%ВАЖНОЕ%' THEN 4
-												WHEN UPPER(f.name) LIKE '%STARRED%' OR UPPER(f.name) LIKE '%ПОМЕЧЕННЫЕ%' THEN 5
-												WHEN UPPER(f.name) LIKE '%ALL MAIL%' OR UPPER(f.name) LIKE '%ВСЯ ПОЧТА%' THEN 6
-												WHEN UPPER(f.name) LIKE '%TRASH%' OR UPPER(f.name) LIKE '%SPAM%' OR UPPER(f.name) LIKE '%JUNK%' OR UPPER(f.name) LIKE '%КОРЗИНА%' THEN 8 ELSE 7 END ASC, f.name ASC`
+					ORDER BY CASE WHEN f.special_use = 'inbox' OR UPPER(f.name) = 'INBOX' THEN 1 WHEN f.special_use = 'sent' OR UPPER(f.name) LIKE '%SENT%' OR UPPER(f.name) LIKE '%ОТПРАВЛ%' OR f.name LIKE '%ارسال%' THEN 2
+												WHEN f.special_use = 'drafts' OR UPPER(f.name) LIKE '%DRAFT%' OR UPPER(f.name) LIKE '%ЧЕРНОВ%' OR f.name LIKE '%پیش‌نویس%' OR f.name LIKE '%پیش نویس%' THEN 3
+												WHEN UPPER(f.name) LIKE '%IMPORTANT%' OR UPPER(f.name) LIKE '%ВАЖНОЕ%' OR f.name LIKE '%مهم%' THEN 4
+												WHEN f.special_use = 'flagged' OR UPPER(f.name) LIKE '%STARRED%' OR UPPER(f.name) LIKE '%ПОМЕЧЕННЫЕ%' OR f.name LIKE '%ستاره%' THEN 5
+												WHEN f.special_use IN ('all', 'archive') OR UPPER(f.name) LIKE '%ALL MAIL%' OR UPPER(f.name) LIKE '%ВСЯ ПОЧТА%' OR f.name LIKE '%همه%' THEN 6
+												WHEN f.special_use IN ('trash', 'junk') OR UPPER(f.name) LIKE '%TRASH%' OR UPPER(f.name) LIKE '%SPAM%' OR UPPER(f.name) LIKE '%JUNK%' OR UPPER(f.name) LIKE '%КОРЗИНА%' OR f.name LIKE '%زباله%' OR f.name LIKE '%هرزنامه%' THEN 8 ELSE 7 END ASC, f.name ASC`
 	} else {
 		query = `SELECT f.id, f.account_id, f.name, f.path, f.is_subscribed, f.last_sync_uid, f.created_at, COALESCE(f.unread_count, 0), COALESCE(f.uid_validity, 0), COALESCE(f.special_use, '')
 				FROM folders f
 				JOIN accounts a ON f.account_id = a.id
 				WHERE f.account_id = ? AND f.is_subscribed = 1
-				ORDER BY CASE WHEN UPPER(f.name) = 'INBOX' THEN 1 WHEN UPPER(f.name) LIKE '%SENT%' OR UPPER(f.name) LIKE '%ОТПРАВЛ%' THEN 2
-												WHEN UPPER(f.name) LIKE '%DRAFT%' OR UPPER(f.name) LIKE '%ЧЕРНОВ%' THEN 3
-												WHEN UPPER(f.name) LIKE '%IMPORTANT%' OR UPPER(f.name) LIKE '%ВАЖНОЕ%' THEN 4
-												WHEN UPPER(f.name) LIKE '%STARRED%' OR UPPER(f.name) LIKE '%ПОМЕЧЕННЫЕ%' THEN 5
-												WHEN UPPER(f.name) LIKE '%ALL MAIL%' OR UPPER(f.name) LIKE '%ВСЯ ПОЧТА%' THEN 6
-												WHEN UPPER(f.name) LIKE '%TRASH%' OR UPPER(f.name) LIKE '%SPAM%' OR UPPER(f.name) LIKE '%JUNK%' OR UPPER(f.name) LIKE '%КОРЗИНА%' THEN 8 ELSE 7 END ASC, f.name ASC`
+				ORDER BY CASE WHEN f.special_use = 'inbox' OR UPPER(f.name) = 'INBOX' THEN 1 WHEN f.special_use = 'sent' OR UPPER(f.name) LIKE '%SENT%' OR UPPER(f.name) LIKE '%ОТПРАВЛ%' OR f.name LIKE '%ارسال%' THEN 2
+												WHEN f.special_use = 'drafts' OR UPPER(f.name) LIKE '%DRAFT%' OR UPPER(f.name) LIKE '%ЧЕРНОВ%' OR f.name LIKE '%پیش‌نویس%' OR f.name LIKE '%پیش نویس%' THEN 3
+												WHEN UPPER(f.name) LIKE '%IMPORTANT%' OR UPPER(f.name) LIKE '%ВАЖНОЕ%' OR f.name LIKE '%مهم%' THEN 4
+												WHEN f.special_use = 'flagged' OR UPPER(f.name) LIKE '%STARRED%' OR UPPER(f.name) LIKE '%ПОМЕЧЕННЫЕ%' OR f.name LIKE '%ستاره%' THEN 5
+												WHEN f.special_use IN ('all', 'archive') OR UPPER(f.name) LIKE '%ALL MAIL%' OR UPPER(f.name) LIKE '%ВСЯ ПОЧТА%' OR f.name LIKE '%همه%' THEN 6
+												WHEN f.special_use IN ('trash', 'junk') OR UPPER(f.name) LIKE '%TRASH%' OR UPPER(f.name) LIKE '%SPAM%' OR UPPER(f.name) LIKE '%JUNK%' OR UPPER(f.name) LIKE '%КОРЗИНА%' OR f.name LIKE '%زباله%' OR f.name LIKE '%هرزنامه%' THEN 8 ELSE 7 END ASC, f.name ASC`
 		args = append(args, accountID)
 	}
 

@@ -459,6 +459,7 @@
     "admin_users": "משתמשים",
     "admin_users_desc": "נהל חשבונות משתמשים רשומים.",
     "loading_users": "טוען משתמשים...",
-    "error_loading_users": "טעינת המשתמשים נכשלה."
+    "error_loading_users": "טעינת המשתמשים נכשלה.",
+    "mcp_last_used": "שימוש אחרון {date}"
   }
 }

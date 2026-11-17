@@ -459,6 +459,7 @@
     "admin_users": "사용자",
     "admin_users_desc": "등록된 사용자 계정을 관리합니다.",
     "loading_users": "사용자 로드 중",
-    "error_loading_users": "사용자를 불러오지 못했습니다."
+    "error_loading_users": "사용자를 불러오지 못했습니다.",
+    "mcp_last_used": "마지막 사용 {date}"
   }
 }

@@ -49,6 +49,7 @@
     "move_prompt": "Verplaatsen naar map:",
     "toast_moved_success": "Verplaatst",
     "cat_actions": "Acties",
-    "mail_print": "E-mail afdrukken"
+    "mail_print": "E-mail afdrukken",
+    "navigation_command_palette": "Opdrachtpalet openen"
   }
 }

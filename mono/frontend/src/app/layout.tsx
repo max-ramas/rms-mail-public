@@ -4,7 +4,7 @@ import Script from "next/script";
 import { cookies, headers } from "next/headers";
 import "./globals.css";
 
-const RTL_LOCALES = new Set(["ar", "he", "ur"]);
+const RTL_LOCALES = new Set(["ar", "he", "ur", "fa"]);
 
 const EDITION_SUFFIX = (() => {
   const e = (process.env.NEXT_PUBLIC_EDITION || "unified").toLowerCase();
